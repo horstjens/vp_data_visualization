@@ -83,6 +83,7 @@ class Sim:
               "pointer0": vp.color.orange,
               "pointer1": vp.color.red,
               "generator_lines": vp.color.gray(0.25),
+              "losses": vp.color.red,
               }
     factor = {"generators": 1.0,
               "nodes": 1.0,
@@ -90,7 +91,7 @@ class Sim:
               "arrows": 0.01,
               "arrows_x": 0.01,
               "arrows_z": 0.01,
-              "losses": 10.0,
+              "losses": 1.0,
               }
     visible = {"generators": True,
                "nodes": True,
@@ -131,10 +132,11 @@ class Sim:
     sub_nodes = {}   # path for cable, only visible when in arrange mode
     sub_cables = {}  # path for cable, only visible when in arrange mode
     labels = {}
-    mini_arrows = {} # flying along the path, only visible when in simulation mode
-    mini_shadows = {} # shadow for each arrow
+    mini_arrows = {}   # flying along the path, only visible when in simulation mode
+    mini_shadows = {}  # shadow for each glider
+    mini_losses = {}   # stalagtites below each glider
 
-    # line_parts =
+
 
 
 class Glider(vp.pyramid):
@@ -142,9 +144,10 @@ class Glider(vp.pyramid):
 
     def __init__(self, i,j,old_pnr,new_pnr, pos):
         randomcolor = Sim.colors["mini_arrow"]
-        randomcolor.x += random.uniform(-0.02, 0.02)
-        randomcolor.y += random.uniform(-0.02, 0.02)
-        randomcolor.z += random.uniform(-0.02, 0.02)
+        colordelta = 0.08
+        randomcolor.x += random.uniform(-colordelta, colordelta)
+        randomcolor.y += random.uniform(-colordelta, colordelta)
+        randomcolor.z += random.uniform(-colordelta, colordelta)
         randomcolor.x = max(0, randomcolor.x)
         randomcolor.y = max(0, randomcolor.y)
         randomcolor.z = max(0, randomcolor.z)
@@ -155,7 +158,7 @@ class Glider(vp.pyramid):
                          color=randomcolor,
                          size=vp.vector(Sim.mini_arrow_length, Sim.mini_arrow_base1,Sim.mini_arrow_base2),
                          #axis = vp.norm(new_point-old_point) * Sim.mini_arrow_length,
-                         pickable = False,
+                         pickable=False,
                          # emissive = True
                          )
 
@@ -197,51 +200,6 @@ class Glider(vp.pyramid):
             self.old_pnr += delta
             self.get_bearing()
         self.pos += vp.norm(self.axis) * Sim.mini_arrow_speed * dt
-
-        # #---
-        # # ------------ create NEW mini_Arrows, one at each subnode------------
-        # # little (moving) arrows
-        # for (i, j), curve in Sim.sub_cables.items():
-        #     plist = [p["pos"] for p in curve.slice(0, curve.npoints)]
-        #     Sim.mini_arrows[(i, j)] = {}
-        #     Sim.mini_shadows[(i, j)] = {}
-        #     for number, p in enumerate(plist):
-        #         if number == len(plist) - 1:
-        #             target_number = 0
-        #             continue
-        #
-        #         target_number = number + 1
-        #         p2 = plist[target_number]
-        #         diff = vp.norm(p2 - p)
-        #         randomcolor = Sim.colors["mini_arrow"]
-        #         randomcolor.x += random.uniform(-0.1, 0.1)
-        #         randomcolor.y += random.uniform(-0.1, 0.1)
-        #         randomcolor.z += random.uniform(-0.1, 0.1)
-        #         randomcolor.x = max(0, randomcolor.x)
-        #         randomcolor.y = max(0, randomcolor.y)
-        #         randomcolor.z = max(0, randomcolor.z)
-        #         randomcolor.x = min(1, randomcolor.x)
-        #         randomcolor.y = min(1, randomcolor.y)
-        #         randomcolor.z = min(1, randomcolor.z)
-        #         glider = vp.pyramid(pos=p,
-        #                             axis=diff * Sim.mini_arrow_length,
-        #                             size=vp.vector(Sim.mini_arrow_length, Sim.mini_arrow_base1, Sim.mini_arrow_base2),
-        #                             color=randomcolor,
-        #                             pickable=False)
-        #         glider.path = plist
-        #         glider.target_number = target_number
-        #         glider.numtar = True
-        #         Sim.mini_arrows[(i, j)][number] = glider
-        #         # print(i,j,":",Sim.mini_arrows[(i,j)])
-        #         # create shadow
-        #         shadow = vp.cylinder(pos=vp.vector(p.x, 0, p.z),
-        #                              opacity=0.5,
-        #                              color=vp.color.black,
-        #                              radius=Sim.mini_arrow_base1,
-        #                              axis=vp.vector(0, 0.02, 0),
-        #                              pickable=False)
-        #         Sim.mini_shadows[(i, j)][number] = shadow
-        #
 
 
 # ---------- helper functions for Data -----------
@@ -385,8 +343,9 @@ def func_toggle_grid(b):
 
 def func_toggle_losses(b):
     """toggles loss rectangles for cables"""
-    for red_wall in Sim.losses.values():
-        red_wall.visible = b.checked
+    for lossdict in Sim.mini_losses.values():
+        for loss_arrow in lossdict.values():
+            loss_arrow.visible = b.checked
 
 
 def func_factor_generators(b):
@@ -470,21 +429,25 @@ def func_simulation(b):
         for o in shadowlist:
             o.visible = False
     Sim.mini_shadows = {}
+    # ---- delete all mini-losses ----
+    for losslist in Sim.mini_losses.values():
+        for o in losslist:
+            o.visible = False
+    Sim.mini_losses = {}
+
     # ------------ create NEW mini_Arrows, one at each subnode------------
     # little (moving) arrows
     for (i,j), curve in Sim.sub_cables.items():
         plist = [p["pos"] for p in curve.slice(0, curve.npoints)]
         Sim.mini_arrows[(i,j)] = {}
         Sim.mini_shadows[(i,j)] = {}
+        Sim.mini_losses[(i,j)] = {}
         for number, point in enumerate(plist):
-
             new_number = number+1
-
             if number == len(plist)-1:
                 p2 = plist[-1] + (plist[-1] - plist[-2])
             else:
                 p2 = plist[new_number]
-
             big_diff = vp.mag(p2-point)
             space_between = Sim.mini_arrow_length + Sim.mini_arrow_distance
             n = 0
@@ -498,6 +461,12 @@ def func_simulation(b):
                                      axis=vp.vector(0, 0.02, 0),
                                      pickable=False)
                 Sim.mini_shadows[(i, j)][g.number] = shadow
+                losspin = vp.arrow(pos=startpoint,
+                                   pickable=False,
+                                   axis=vp.vector(0,-0.1,0),
+                                   color=Sim.colors["losses"],
+                                   size=vp.vector(1,0.1,0.1))
+                Sim.mini_losses[(i,j)][g.number] = losspin
                 n += 1
 
 
@@ -557,7 +526,7 @@ def create_widgets():
                            type="numeric", text="0.01")
     vp.wtext(pos=Sim.scene.caption_anchor,text="losses (y):")
     Sim.gui["factor_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_losses,
-                           type="numeric", text="10.0")
+                           type="numeric", text="1.0")
     # legend:
     vp.label(text="nodes (busbars)", pixel_pos= True, pos=vp.vector(10, 790,0), color=vp.color.blue, align="left", box=False)
     vp.label(text="generators", pixel_pos=True, pos=vp.vector(10, 770,0), color=vp.color.yellow, align="left", box=False)
@@ -856,7 +825,7 @@ def update_stuff():
             power = power1 if numtar else power2
             #print(number, target, "power is:", power1, power2, loss, numtar)
             if f"cable {number}-{target}" in Sim.labels:
-                Sim.labels[f"cable {number}-{target}"].text = f"c {number}-->{target}: {power} W {numtar}"
+                Sim.labels[f"cable {number}-{target}"].text = f"c {number}-->{target}: {power} ({loss}) W {numtar}"
                 #let sub_cables stay on the ground
                 #Sim.sub_cables[(number,target)].origin.y = power * Sim.factor["cables"]
                 # ----- mini-arrows ------
@@ -866,6 +835,8 @@ def update_stuff():
                 for n, glider in Sim.mini_arrows[(number, target)].items():
                     glider.pos.y = power * Sim.factor["arrows"]
                     glider.numtar = numtar
+                    Sim.mini_losses[(number, target)][glider.number].pos.y = glider.pos.y
+                    Sim.mini_losses[(number, target)][glider.number].axis=vp.vector(0,-loss * Sim.factor["losses"],0)
 
 
             # ##for (o, t), arrow_list in Sim.mini_arrows.items():
@@ -947,6 +918,10 @@ def main():
                 shadow = Sim.mini_shadows[(i,j)][n]
                 shadow.pos.x = glider.pos.x
                 shadow.pos.z = glider.pos.z
+                loss = Sim.mini_losses[(i,j)][n]
+                loss.pos.x = glider.pos.x
+                loss.pos.z = glider.pos.z
+                #loss.pos.y = glider.pos.y
 
 
 if __name__ == "__main__":
