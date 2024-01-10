@@ -13,7 +13,12 @@ nodes or busbars(small networks)
        > volt
 cables connect nodes with each powers 
        > power from/to
-
+       
+# TODOS
++let user drag nodes
++sub-divide cables into a (fixed?) number of sub-cables between sub-nodes and let user drag those sub-nodes
++color scale every "value" on a scale between green (normal) to red (upper limit) or blue (lower-limit)
++use different extruded shapes (Star etc.) instead of cylinders 
 """
 
 
@@ -379,20 +384,40 @@ def create_stuff():
 
     # create ALL cables
     for o_number, t_numbers in Data.cables_dict.items():
-        # get the value
+        # get the value of original vector (startnode)
         ov = vp.vector(Sim.nodes[o_number].pos.x, Sim.nodes[o_number].pos.y, Sim.nodes[o_number].pos.z)
         for t in t_numbers:
+            # t is target number
+            # target vector (target node)
             tv = vp.vector(Sim.nodes[t].pos.x, Sim.nodes[t].pos.y, Sim.nodes[t].pos.z)
             # base cable (invisible at start)
             # Sim.cables[(o_number, t)] = vp.arrow(pos=ov, axis=tv-ov, color=vp.color.green, shaftwidth=1, visible=False)
             middle = ov + vp.norm(tv - ov) * vp.mag(tv - ov) / 2
             # ---- create losses (red rectangles) for all cables. the loss is the difference between the positive (sending) and the negative (reciving) value
             loss = 20
-            Sim.losses[(o_number, t)] = vp.box(pos=middle + vp.vector(0, -loss/2,0),
-                                              color=vp.color.red,
-                                              axis=(tv-ov)/2,
-                                              size=vp.vector(vp.mag(tv-ov), -loss, 1),
-                                              visible=True)
+            # split cable into 4 sub-cables
+            subs = []
+            subs_amount = 4    # TODO: make 4 a parameter
+            substart = vp.vector(ov.x, ov.y, ov.z)
+            diffvector = vp.norm(tv-ov) * vp.mag(tv-ov) / subs_amount
+
+            for i in range(subs_amount):
+                end = substart + diffvector
+                middle = substart + diffvector * 0.5
+                color = vp.vector(0.1 + 0.9/subs_amount * i, 0,0)
+                subs.append(vp.box(pos=middle + vp.vector(0,-loss/2,0),
+                                   color=color,
+                                   axis=(end-substart)/2,
+                                   size=vp.vector(vp.mag(end-substart),-loss,1),
+                                   visible=True))
+                substart = vp.vector(substart.x + diffvector.x, substart.y + diffvector.y, substart.z + diffvector.z)
+
+            Sim.losses[(o_number, t)] = subs
+            #Sim.losses[(o_number, t)] = vp.box(pos=middle + vp.vector(0, -loss/2,0),
+            #                                  color=vp.color.red,
+            #                                  axis=(tv-ov)/2,
+            #                                  size=vp.vector(vp.mag(tv-ov), -loss, 1),
+            #                                  visible=True)
             # base cable lable
             # pos=ov + vp.norm(tv - ov) * vp.mag(tv - ov) / 2,
             Sim.labels[f"cable {o_number} {t}"] = vp.label(pos=middle,
@@ -401,7 +426,7 @@ def create_stuff():
                                                            color=vp.color.white,
                                                            visible=False)
             # little (moving) arrows
-            Sim.mini_arrows[(o_number, t)] = []  # empty list
+            Sim.mini_arrows[(o_number, t)] = []  # empty list   # TODO: put here sub-lists and sub-nodes
             start = vp.vector(ov.x, ov.y, ov.z)
             end = start + vp.norm(tv - ov) * Sim.mini_arrow_length
             # Sim.mini_arrows[(o_number,t)].append(vp.arrow(pos=vp.vector(start.x, start.y, start.z),
@@ -491,10 +516,12 @@ def update_stuff():
                 except:
                     print(f"loss not found for cable: {target}, {number}")
                     continue
-                # update red loss wall
-                Sim.losses[(number, target)].size.y = -loss * Sim.factor_losses_y
-                Sim.losses[(number, target)].pos.y = (-loss * Sim.factor_losses_y)/2
                 Sim.labels[f"cable {number} {target}"].text = f"c {number}-->{target}: {power} W loss: {loss:.2f} W"
+                # update red loss wall
+                for subbox in Sim.losses[(number, target)]:
+                    subbox.y = -loss * Sim.factor_losses_y
+                    subbox.pos.y = (-loss * Sim.factor_losses_y)/2
+
 
 
 def mainloop():
