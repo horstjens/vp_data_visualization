@@ -209,8 +209,8 @@ class Sim:
     GRID_STEP = 25
     NODE_RADIUS = 4  # how big a node is
     GENERATOR_RADIUS = 8
-    POINTER0_RADIUS = GENERATOR_RADIUS + 10
-    POINTER1_RADIUS = GENERATOR_RADIUS + 15
+    POINTER0_RADIUS = GENERATOR_RADIUS + 10 # for wind angle
+    POINTER1_RADIUS = GENERATOR_RADIUS + 15 # for wind angle
     geo_radius1 = 200
     geo_radius2 = 225
     animation_duration = 20  # seconds
@@ -318,7 +318,7 @@ def create_stuff():
         Sim.gridlines.append(
             vp.curve(vp.vector(-Sim.GRID_MAX, 0, i), vp.vector(Sim.GRID_MAX, 0, i), radius=0.1, color=vp.color.cyan))
 
-    # create an inner circle with all nodes (blue cylinder)
+    # create an inner circle with all nodes (busbars, blue cylinder)
     pointer = vp.vector(Sim.geo_radius1, 0, 0)
     for i, number in enumerate(Data.node_numbers):
         end_point_1 = vp.vector(0, 0, 0) + pointer  # origin of cylinder for node
@@ -331,7 +331,7 @@ def create_stuff():
 
         Sim.labels[f"node {number}"] = vp.label(pos=end_point_2, text=f"n {number}", height=10, color=vp.color.white,
                                                 visible=False)
-        # add generators in outer circle (if number is matching)
+        # add (wind) generators in outer circle (if number is matching)
         if number in Data.generator_numbers:
             end_point_3 = vp.vector(0, 0, 0) + pointer.norm() * Sim.geo_radius2  # origin of cylinder for generator
             end_point_4 = vp.vector(0, 0, 0) + pointer.norm() * (Sim.geo_radius2 + 5)  # origin of label for generator
