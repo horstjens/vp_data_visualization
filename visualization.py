@@ -134,7 +134,7 @@ class Sim:
                 }
     animation_duration = 20  # seconds
     frame_duration = animation_duration / len(Data.df)
-    mini_arrow_length = 2
+    mini_arrow_length = 10
     mini_arrow_base1 = 1
     mini_arrow_base2 = 1
     mini_arrow_distance = 20
@@ -528,8 +528,34 @@ def func_simulation(b):
             point2 = pointlist[k+1]
             diff = point2 - point1
 
-            Sim.arrows_ij[(i, j, k)] = vp.arrow(pos=point1, axis=diff, round=True, shaftwidth=1, headwidth=2, color=color, visible=True, pickable=False )
-            Sim.arrows_ji[(i,j,k)] = vp.arrow(pos=point2, axis=-diff, round=True, shaftwidth=1, headwidth=2, color=color, visible=False, pickable=False )
+            Sim.arrows_ij[(i, j, k)] = []  # vp.arrow(pos=point1, axis=diff, round=True, shaftwidth=1, headwidth=2, color=color, visible=True, pickable=False )
+            Sim.arrows_ji[(i,j,k)] =   []  # vp.arrow(pos=point2, axis=-diff, round=True, shaftwidth=1, headwidth=2, color=color, visible=False, pickable=False )
+
+            amount = int(vp.mag(diff) / Sim.mini_arrow_length)
+            # direction i->j
+            start = point1
+            for number in range(amount):
+                color = vp.color.gray(0.75) if number % 3 == 0 else vp.color.gray(0.5) if number % 3 == 1 else vp.color.gray(0.25)
+                ax = vp.norm(diff) * Sim.mini_arrow_length
+                miniarrow = vp.arrow(pos=start, axis=ax, round=True, shaftwidth=1, headwidth=2, color=color, visible=True, pickable=False)
+                miniarrow.number = number
+                Sim.arrows_ij[(i,j,k)].append(miniarrow)
+
+                miniarrow2 = vp.arrow(pos=start+ax, axis=-ax, round=True, shaftwidth=1, headwidth=2, color=color, visible=True, pickable=False)
+                miniarrow2.number = number
+                Sim.arrows_ji[(i,j,k)].append(miniarrow2)
+                start += miniarrow.axis
+            # direction j->i
+            #start = point2
+            #for number in range(amount):
+            #    color = vp.color.gray(0.75) if number % 3 == 0 else vp.color.gray(0.5) if number % 3 == 1 else vp.color.gray(0.25)
+            #    miniarrow = vp.arrow(pos=start, axis=vp.norm(diff) * -Sim.mini_arrow_length, round=True, shaftwidth=1, headwidth=2, color=color, visible=True, pickable=False)
+            #    miniarrow.number = number
+            #    Sim.arrows_ji[(i,j,k)].append(miniarrow)
+            #    start += -miniarrow.axis
+
+
+
 
     # ----- old: ---
     # ------------ create NEW mini_Arrows, one at each subnode------------
@@ -1240,7 +1266,11 @@ def get_Data_min_max():
 def update_stuff():
     # -------- nodes --------
     for number, cyl in Sim.nodes.items():
-        volt = Data.df[col_name_node(number)][Sim.i]
+        try:
+            volt = Data.df[col_name_node(number)][Sim.i]
+        except KeyError:
+            print("could not get value for line ",Sim.i, "for column:",  col_name_node(number))
+            continue
         cyl.axis = vp.vector(0, volt * Sim.factor["nodes"], 0)
         Sim.labels[f"node {number}"].text = f"n {number}: {volt} V"
         Sim.letters[f"node {number}"].pos.y = cyl.axis.y + 1
@@ -1248,8 +1278,12 @@ def update_stuff():
 
     # --------- generators ----------------
     for number, cyl in Sim.generators.items():
-        power = Data.df[col_name_power(number)][Sim.i]
-        g_angle = Data.df[col_name_angle(number)][Sim.i]
+        try:
+            power = Data.df[col_name_power(number)][Sim.i]
+            g_angle = Data.df[col_name_angle(number)][Sim.i]
+        except KeyError:
+            print("could not get value of line", Sim.i, "for column(s)", col_name_power(number), col_name_angle(number))
+            continue
         cyl.axis = vp.vector(0, power * Sim.factor["generators"], 0)
         # ------- pointers for angle --------
         # Sim.pointer0[number].y = cyl.pos.y + cyl.axis.y + 1
@@ -1269,8 +1303,12 @@ def update_stuff():
     for number, targetlist in Data.cables_dict.items():
         for target in targetlist:
             # get power value from dataframe
-            power1 = Data.df[col_name_cable(number, target)][Sim.i]
-            power2 = Data.df[col_name_cable(target, number)][Sim.i]
+            try:
+                power1 = Data.df[col_name_cable(number, target)][Sim.i]
+                power2 = Data.df[col_name_cable(target, number)][Sim.i]
+            except KeyError:
+                print("could not get value line ", Sim.i, "for columns:", col_name_cable(number, target), col_name_cable(target, number))
+                continue
             loss = abs(power1 + power2)
             numtar = all((power1 > 0, power2 < 0))  # True if flow from number to target
             power = power1 if numtar else power2
@@ -1282,15 +1320,19 @@ def update_stuff():
                     # TODO: flexible number of sub_cables?
                     # TODO: cable_factor
                     if numtar:
-                        Sim.arrows_ij[(number, target, k)].visible = True
-                        Sim.arrows_ji[(number, target, k)].visible = False
-                        Sim.arrows_ij[(number, target, k)].shaftwidth = power  * Sim.factor["cables"]
-                        Sim.arrows_ij[(number, target, k)].headwidth = power  * Sim.factor["cables"] +1
+                        for arrow in Sim.arrows_ji[(number, target, k)]:
+                            arrow.visible = False
+                        for arrow in Sim.arrows_ij[(number, target, k)]:
+                            arrow.visible = True
+                            arrow.shaftwidth = power * Sim.factor["cables"]
+                            arrow.headwidth = power * Sim.factor["cables"] + 1
                     else:
-                        Sim.arrows_ij[(number, target, k)].visible = False
-                        Sim.arrows_ji[(number, target, k)].visible = True
-                        Sim.arrows_ji[(number, target, k)].shaftwidth = power  * Sim.factor["cables"]
-                        Sim.arrows_ji[(number, target, k)].headwidth = power  * Sim.factor["cables"] + 1
+                        for arrow in Sim.arrows_ij[(number, target, k)]:
+                            arrow.visible = False
+                        for arrow in Sim.arrows_ji[(number, target, k)]:
+                            arrow.visible = True
+                            arrow.shaftwidth = power * Sim.factor["cables"]
+                            arrow.headwidth = power * Sim.factor["cables"] + 1
 
                 # --- old ---
                 # let sub_cables stay on the ground
