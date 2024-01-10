@@ -1,6 +1,8 @@
 import pandas as pd
 import vpython as vp
 
+
+
 """
 generators (circles in diagram)
         >angle (for windmills) (-180° to 180°)
@@ -89,11 +91,26 @@ def create_data():
 def button_start_func(b):
     print("start was pressed", b.text)
 
+def button_end_func(b):
+    print("end was pressed", b.text)
+
+def button_play_func(b):
+    print("play button was pressed", b.text)
+    if "play" in b.text.lower():
+        Sim.animation_running = True
+        Sim.button_play.text = "Pause ||"
+    else:
+        Sim.animation_running = False
+        Sim.button_play.text = "Play >"
+
 
 def slider1_func(b):
+    """jump to a specific frame in the dataset """
     print("slider is set to ", b.value)
     # Sim.connAB.pos.y = power_ab[b.value]
     Sim.label3.text = str(b.value)
+    Sim.i = b.value
+    update_stuff()
 
 
 def check1_func(b):
@@ -127,23 +144,34 @@ def check5_func(b):
     for line in Sim.gridlines:
         line.visible = b.checked
 
+def input1_func(b):
+    print("the y factor for generators is now:", b.number)
+    Sim.factor_generators = b.number
+    update_stuff()
+
 class Sim:
     """all important vpython constants are in this class, to make referencing from outside more easy"""
     GRID_MAX = 250
     GRID_STEP = 25
     NODE_RADIUS = 4  # how big a node is
     GENERATOR_RADIUS = 8
+    POINTER0_RADIUS = GENERATOR_RADIUS + 10
+    POINTER1_RADIUS = GENERATOR_RADIUS + 15
     geo_radius1 = 200
     geo_radius2 = 225
+    animation_duration = 20 # seconds
+    frame_duration = animation_duration / len(Data.df)
+    animation_running = False
     scene = vp.canvas(title='Bruce training data',
                       caption="show: ",
-                      width=800, height=600,
+                      width=1200, height=800,
                       center=vp.vector(0, 0, 0),
                       background=vp.color.black,
                       )
 
     fps = 60
     dt = 1 / fps
+    i = 0  # frame number, row in dataframe
     mini_arrow_length = 9
     mini_arrow_base1 = 3
     mini_arrow_base2 = 3
@@ -154,12 +182,18 @@ class Sim:
     labels = {}
     nodes = {}
     generators = {}
+    pointer0 = {}  # to display angle at each generator
+    pointer1 = {}  # to display angle at each generator
     cables = {} # base arrow from origin to target, will be invisible
     mini_arrows = {}
+    factor_generators = 1.0
 
 def create_widgets():
     # ---- widgets above window in title area -------
-    Sim.button_start = vp.button(bind=button_start_func, text="Start", pos=Sim.scene.title_anchor)
+    Sim.button_start = vp.button(bind=button_start_func, text="|<", pos=Sim.scene.title_anchor)
+    Sim.button_play = vp.button(bind=button_play_func, text="play >", pos=Sim.scene.title_anchor)
+    Sim.button_end = vp.button(bind=button_end_func, text=">|", pos=Sim.scene.title_anchor)
+
     Sim.label1 = vp.wtext(pos=Sim.scene.title_anchor, text="---hallo---")
     Sim.scene.append_to_title("\n")
     Sim.label2 = vp.wtext(pos=Sim.scene.title_anchor, text="timeframe:  ")
@@ -174,6 +208,9 @@ def create_widgets():
     Sim.box3 = vp.checkbox(pos=Sim.scene.caption_anchor, text="cable labels ", checked=False, bind=check3_func)
     Sim.box4 = vp.checkbox(pos=Sim.scene.caption_anchor, text="base cables ", checked=False, bind=check4_func)
     Sim.box5 = vp.checkbox(pos=Sim.scene.caption_anchor, text="grid ", checked=True, bind=check5_func)
+    Sim.scene.append_to_caption("\n")
+    vp.wtext(pos=Sim.scene.caption_anchor, text="y factor for:")
+    Sim.input1 = vp.winput(pos=Sim.scene.caption_anchor, bind=input1_func, prompt="generators:", type="numeric", text="1.0")
 
 
 def create_stuff():
@@ -214,6 +251,25 @@ def create_stuff():
                                                          color=vp.color.white,
                                                          visible=False
                                                          )
+            # pointer0 always points like x-axis
+            # ------- pointers for angle ------
+            start = vp.vector(end_point_3.x, end_point_3.y - 2, end_point_3.z)
+            end1 = start + vp.vector(Sim.POINTER0_RADIUS, 0,0)
+            end2 = start + vp.vector(Sim.POINTER1_RADIUS, 0, 0)
+            Sim.pointer0[number] = vp.arrow(pos=start,
+                                            axis=end1-start,
+                                            color=vp.color.red,
+                                            shaftwidth = 1.0,
+                                            #headwidth= 3
+                                            )
+            Sim.pointer1[number] = vp.arrow(pos=start,
+                                            axis=end2-start,
+                                            color=vp.color.orange,
+                                            round=True,
+                                            shaftwidth=0.5,
+                                            #headwidth = 0.5
+                                            )
+
             # make automatic connection from generator to node
             vp.curve(vp.vector(end_point_1.x, 2, end_point_1.z),
                      vp.vector(end_point_3.x, 2, end_point_3.z),
@@ -273,11 +329,49 @@ def create_stuff():
                                                                  width=Sim.mini_arrow_base2,
                                                                  ))
                 end += vp.norm(tv - ov) *  Sim.mini_arrow_distance
+    # done with creating stuff - make ONE update for correcting y values
+
+    update_stuff()
 
 
+def update_stuff():
+    # --------- generators ----------------
+    for number, cyl in Sim.generators.items():
+        power = Data.df[col_name_power(number)][Sim.i]
+        g_angle = Data.df[col_name_angle(number)][Sim.i]
+        cyl.axis = vp.vector(0, power * Sim.factor_generators, 0)
+        # ------- pointers for angle --------
+        #Sim.pointer0[number].y = cyl.pos.y + cyl.axis.y + 1
+        #Sim.pointer1[number].y = cyl.pos.y + cyl.axis.y + 1
+        # TODO: compare with angle from previous frame, only move when necessary
+        # reset pointer1
+        p0 = Sim.pointer0[number]
+        p1_axis_vector = vp.vector(Sim.POINTER1_RADIUS, 0, 0)
+        p1_axis_vector = vp.rotate(p1_axis_vector, angle=vp.radians(g_angle), axis=vp.vector(0,1,0))
+        Sim.pointer1[number].axis = vp.vector(p1_axis_vector.x, p1_axis_vector.y, p1_axis_vector.z)
+        Sim.labels[f"generator {number}"].text = f"g {number}: {power} MW, {g_angle}°"
+        #print(Sim.i, number, power)
 def mainloop():
+    simtime = 0
+    time_since_framechange = 0
+    #frame_number = 0  # Sim.i
     while True:
         vp.rate(Sim.fps)
+        simtime += Sim.dt
+        time_since_framechange += Sim.dt
+        # play animation
+        if Sim.animation_running:
+            if time_since_framechange > Sim.frame_duration:
+                time_since_framechange = 0
+                Sim.i += 1
+                if Sim.i >= len(Data.df):
+                    Sim.i = 0
+                # update widgets
+                Sim.label3.text = f"{Sim.i}"
+                Sim.slider1.value = Sim.i
+                # get the data from df (for y values)
+                update_stuff()
+
         # move the little arrows
         for (o, t), arrow_list in Sim.mini_arrows.items():
             for a in arrow_list:
