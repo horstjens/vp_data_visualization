@@ -3,8 +3,8 @@ import pandas as pd
 import random
 import vpython as vp
 
-# TODO: mini-arrows sollen path abfliegen
-# TODO: mini richtungswechsel (update)
+
+# fixme: besserer mini richtungswechsel (update)
 # TODO: sowohl minis als auch subcables visibility toggeln
 
 """moving a disc in a 2d plane using the mouse,
@@ -113,7 +113,7 @@ class Sim:
     mini_arrow_length = 2
     mini_arrow_base1 = 1
     mini_arrow_base2 = 1
-    mini_arrow_distance = 8
+    mini_arrow_distance = 20
     mini_arrow_speed = 8
 
 
@@ -135,6 +135,114 @@ class Sim:
     mini_shadows = {} # shadow for each arrow
 
     # line_parts =
+
+
+class Glider(vp.pyramid):
+    number = 1
+
+    def __init__(self, i,j,old_pnr,new_pnr, pos):
+        randomcolor = Sim.colors["mini_arrow"]
+        randomcolor.x += random.uniform(-0.02, 0.02)
+        randomcolor.y += random.uniform(-0.02, 0.02)
+        randomcolor.z += random.uniform(-0.02, 0.02)
+        randomcolor.x = max(0, randomcolor.x)
+        randomcolor.y = max(0, randomcolor.y)
+        randomcolor.z = max(0, randomcolor.z)
+        randomcolor.x = min(1, randomcolor.x)
+        randomcolor.y = min(1, randomcolor.y)
+        randomcolor.z = min(1, randomcolor.z)
+        super().__init__(pos=pos ,
+                         color=randomcolor,
+                         size=vp.vector(Sim.mini_arrow_length, Sim.mini_arrow_base1,Sim.mini_arrow_base2),
+                         #axis = vp.norm(new_point-old_point) * Sim.mini_arrow_length,
+                         pickable = False,
+                         # emissive = True
+                         )
+
+        self.i = i
+        self.j = j
+        curve = Sim.sub_cables[(i, j)]
+        self.path = [p["pos"] for p in curve.slice(0, curve.npoints)]
+        self.old_pnr = old_pnr
+        self.new_pnr = new_pnr
+        self.numtar = True
+        self.number = Glider.number
+        Glider.number += 1
+        self.get_bearing()
+        Sim.mini_arrows[(i,j)][self.number] = self
+
+
+    def get_bearing(self):
+        if all((self.numtar, self.old_pnr > self.new_pnr)):
+            self.old_pnr, self.new_pnr = self.new_pnr, self.old_pnr # swap
+        if all((not self.numtar, self.old_pnr < self.new_pnr)):
+            self.old_pnr, self.new_pnr = self.new_pnr, self.old_pnr  # swap
+        if all((self.numtar,  self.new_pnr >= len(self.path))):
+            self.pos = vp.vector(self.path[0].x, self.pos.y, self.path[0].z)
+            self.old_pnr = 0
+            self.new_pnr = 1
+        if all((not self.numtar, self.new_pnr < 0)):
+            self.pos = vp.vector(self.path[-1].x, self.pos.y, self.path[-1].z)
+            self.old_pnr = len(self.path)-1
+            self.new_pnr = len(self.path)-2
+        newpoint = vp.vector(self.path[self.new_pnr].x, self.pos.y, self.path[self.new_pnr].z)
+        self.axis = vp.norm(newpoint-self.pos) * Sim.mini_arrow_length
+
+    def move(self, dt):
+        new_pos = self.pos + vp.norm(self.axis) * Sim.mini_arrow_speed * dt
+        # test at y 0
+        if vp.mag(vp.vector(new_pos.x, 0, new_pos.z) - self.path[self.new_pnr]) < Sim.mini_arrow_length:
+            delta = 1 if self.numtar else -1
+            self.new_pnr += delta
+            self.old_pnr += delta
+            self.get_bearing()
+        self.pos += vp.norm(self.axis) * Sim.mini_arrow_speed * dt
+
+        # #---
+        # # ------------ create NEW mini_Arrows, one at each subnode------------
+        # # little (moving) arrows
+        # for (i, j), curve in Sim.sub_cables.items():
+        #     plist = [p["pos"] for p in curve.slice(0, curve.npoints)]
+        #     Sim.mini_arrows[(i, j)] = {}
+        #     Sim.mini_shadows[(i, j)] = {}
+        #     for number, p in enumerate(plist):
+        #         if number == len(plist) - 1:
+        #             target_number = 0
+        #             continue
+        #
+        #         target_number = number + 1
+        #         p2 = plist[target_number]
+        #         diff = vp.norm(p2 - p)
+        #         randomcolor = Sim.colors["mini_arrow"]
+        #         randomcolor.x += random.uniform(-0.1, 0.1)
+        #         randomcolor.y += random.uniform(-0.1, 0.1)
+        #         randomcolor.z += random.uniform(-0.1, 0.1)
+        #         randomcolor.x = max(0, randomcolor.x)
+        #         randomcolor.y = max(0, randomcolor.y)
+        #         randomcolor.z = max(0, randomcolor.z)
+        #         randomcolor.x = min(1, randomcolor.x)
+        #         randomcolor.y = min(1, randomcolor.y)
+        #         randomcolor.z = min(1, randomcolor.z)
+        #         glider = vp.pyramid(pos=p,
+        #                             axis=diff * Sim.mini_arrow_length,
+        #                             size=vp.vector(Sim.mini_arrow_length, Sim.mini_arrow_base1, Sim.mini_arrow_base2),
+        #                             color=randomcolor,
+        #                             pickable=False)
+        #         glider.path = plist
+        #         glider.target_number = target_number
+        #         glider.numtar = True
+        #         Sim.mini_arrows[(i, j)][number] = glider
+        #         # print(i,j,":",Sim.mini_arrows[(i,j)])
+        #         # create shadow
+        #         shadow = vp.cylinder(pos=vp.vector(p.x, 0, p.z),
+        #                              opacity=0.5,
+        #                              color=vp.color.black,
+        #                              radius=Sim.mini_arrow_base1,
+        #                              axis=vp.vector(0, 0.02, 0),
+        #                              pickable=False)
+        #         Sim.mini_shadows[(i, j)][number] = shadow
+        #
+
 
 # ---------- helper functions for Data -----------
 
@@ -368,42 +476,31 @@ def func_simulation(b):
         plist = [p["pos"] for p in curve.slice(0, curve.npoints)]
         Sim.mini_arrows[(i,j)] = {}
         Sim.mini_shadows[(i,j)] = {}
-        for number, p in enumerate(plist):
-            if number == len(plist)-1:
-                target_number = 0
-                continue
+        for number, point in enumerate(plist):
 
-            target_number = number+1
-            p2 = plist[target_number]
-            diff = vp.norm(p2-p)
-            randomcolor = Sim.colors["mini_arrow"]
-            randomcolor.x += random.uniform(-0.1, 0.1)
-            randomcolor.y += random.uniform(-0.1, 0.1)
-            randomcolor.z += random.uniform(-0.1, 0.1)
-            randomcolor.x = max(0, randomcolor.x)
-            randomcolor.y = max(0, randomcolor.y)
-            randomcolor.z = max(0, randomcolor.z)
-            randomcolor.x = min(1, randomcolor.x)
-            randomcolor.y = min(1, randomcolor.y)
-            randomcolor.z = min(1, randomcolor.z)
-            glider = vp.pyramid(pos=p,
-                                axis=diff * Sim.mini_arrow_length,
-                                size=vp.vector(Sim.mini_arrow_length, Sim.mini_arrow_base1, Sim.mini_arrow_base2),
-                                color=randomcolor,
-                                pickable=False)
-            glider.path = plist
-            glider.target_number = target_number
-            glider.numtar = True
-            Sim.mini_arrows[(i,j)][number] = glider
-            #print(i,j,":",Sim.mini_arrows[(i,j)])
-            # create shadow
-            shadow = vp.cylinder(pos=vp.vector(p.x,0,p.z),
-                                 opacity=0.5,
-                                 color=vp.color.black,
-                                 radius=Sim.mini_arrow_base1,
-                                 axis=vp.vector(0,0.02,0),
-                                 pickable=False)
-            Sim.mini_shadows[(i,j)][number] = shadow
+            new_number = number+1
+
+            if number == len(plist)-1:
+                p2 = plist[-1] + (plist[-1] - plist[-2])
+            else:
+                p2 = plist[new_number]
+
+            big_diff = vp.mag(p2-point)
+            space_between = Sim.mini_arrow_length + Sim.mini_arrow_distance
+            n = 0
+            while n * space_between < big_diff:
+                startpoint = point + vp.norm(p2-point) * n * space_between
+                g = Glider(i,j,number, new_number, startpoint) # is putting himself into Sim.mini_arrows[(i,j)][g.number]
+                shadow = vp.cylinder(pos=vp.vector(startpoint.x, 0, startpoint.z),
+                                     opacity=0.5,
+                                     color=vp.color.black,
+                                     radius=Sim.mini_arrow_base1,
+                                     axis=vp.vector(0, 0.02, 0),
+                                     pickable=False)
+                Sim.mini_shadows[(i, j)][g.number] = shadow
+                n += 1
+
+
 
 
 
@@ -763,10 +860,12 @@ def update_stuff():
                 #let sub_cables stay on the ground
                 #Sim.sub_cables[(number,target)].origin.y = power * Sim.factor["cables"]
                 # ----- mini-arrows ------
-                for n, arrow in Sim.mini_arrows[(number, target)].items():
+                #print(Sim.mini_arrows[(number, target)])
+                #gliderdict = Sim.mini_arrows[(number, target)]:
                     #print("arrow:", n, number, target, arrow)
-                    arrow.pos.y = power * Sim.factor["arrows"]
-                    arrow.numtar = numtar
+                for n, glider in Sim.mini_arrows[(number, target)].items():
+                    glider.pos.y = power * Sim.factor["arrows"]
+                    glider.numtar = numtar
 
 
             # ##for (o, t), arrow_list in Sim.mini_arrows.items():
@@ -842,43 +941,12 @@ def main():
             # get the data from df (for y values)
             update_stuff()
         # --- gliders ----
-        for (i,j), arrowdict in Sim.mini_arrows.items():
-            for n, arrow in arrowdict.items():
-                if arrow.numtar:
-                    previous_point = arrow.path[arrow.target_number - 1]
-                    next_point = arrow.path[arrow.target_number]
-                    #diff = vp.norm(next_point - previous_point)
-                else:
-                    previous_point = arrow.path[arrow.target_number]
-                    next_point = arrow.path[arrow.target_number - 1]
-                diff = vp.norm(next_point - previous_point)
-
-                arrow.axis = diff * Sim.mini_arrow_length
-                new_pos = arrow.pos + diff * Sim.mini_arrow_speed * Sim.dt
-                # TODO check new_pos
-                if vp.mag(vp.vector(new_pos.x, 0, new_pos.z) - vp.vector(next_point.x, 0, next_point.z)) < (Sim.mini_arrow_length*2):
-                    if arrow.numtar:
-                        arrow.target_number += 1
-                        if arrow.target_number == len(arrow.path):
-                            arrow.target_number = 1
-                            new_pos = vp.vector(arrow.path[0].x, arrow.pos.y, arrow.path[0].z)
-                        else:
-                            new_pos = vp.vector(arrow.path[arrow.target_number-1].x, arrow.pos.y, arrow.path[arrow.target_number-1].z)
-                    else:
-                        # fly path in reverse order
-                        arrow.target_number -= 1
-                        if arrow.target_number < 0:
-                            # get index of previous-last element (index -2 in python)
-                            arrow.target_number = len(arrow.path) -2
-                            new_pos = vp.vector(arrow.path[-1].x, arrow.pos.y, arrow.path[-1].z)
-                        else:
-                            new_pos = vp.vector(arrow.path[arrow.target_number+1].x, arrow.pos.y, arrow.path[arrow.target_number+1].z)
-                arrow.pos.x = new_pos.x
-                arrow.pos.z = new_pos.z
-                # y change by update_stuff()
+        for (i,j), gliderdict in Sim.mini_arrows.items():
+            for n, glider in gliderdict.items():
+                glider.move(Sim.dt)
                 shadow = Sim.mini_shadows[(i,j)][n]
-                shadow.pos.x = new_pos.x
-                shadow.pos.z = new_pos.z
+                shadow.pos.x = glider.pos.x
+                shadow.pos.z = glider.pos.z
 
 
 if __name__ == "__main__":
