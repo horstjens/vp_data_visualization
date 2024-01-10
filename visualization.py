@@ -19,14 +19,27 @@ nodes or busbars(small networks)
        recive power from other networks (negative numbers).
        send power to consumers
        > volt
+ 
+
 cables connect nodes with each powers 
        > power from/to
+
+color coding:       bad     crit     toler   ok     ok    toler    crit      bad
+Angle	deg	        -180	-170	-160	-150	  150	 160	  170	  180
+Voltage	pu	        0.9	   0.925	0.95	0.975	1.025	1.05	1.075	    1.1
+Power	% of MVA 	                                   60	  80	  100	  120
+Losses	%	                                            2	   3	    4	    5
+
+# wind, node: cylinder grows in y axis
+# cables: cylinder radius grows (xz axis)
+# cables: connect top y value of their connected cylinders. arrows between each subnode. 
+# losses: ? arrows up/down?
+
+
        
 # TODOS
-+let user drag nodes
-+sub-divide cables into a (fixed?) number of sub-cables between sub-nodes and let user drag those sub-nodes
 +color scale every "value" on a scale between green (normal) to red (upper limit) or blue (lower-limit)
-+use different extruded shapes (Star etc.) instead of cylinders 
+WONTFIX: +use different extruded shapes (Star etc.) instead of cylinders 
 
 """
 
@@ -69,6 +82,7 @@ class Sim:
                       width=1200, height=800,
                       center=vp.vector(0, 0, 0),
                       background=vp.color.gray(0.8),
+                      align = "left", # caption is to the right?
                       )
     grid_max = 200
     grid_step = 10
@@ -114,8 +128,8 @@ class Sim:
               "geo1": grid_max / 2 - 25,
               "geo2": grid_max / 2 - 1,
               }
-    textures = {"generators": os.path.join("energy2.png"),
-                "nodes": os.path.join("energy1.png"),
+    textures = {#"generators": os.path.join("energy2.png"),
+                #"nodes": os.path.join("energy1.png"),
                 "map": os.path.join("map001.png"),
                 }
     animation_duration = 20  # seconds
@@ -139,10 +153,14 @@ class Sim:
     generator_lines = {}
     sub_nodes = {}  # path for cable, only visible when in arrange mode
     sub_cables = {}  # path for cable, only visible when in arrange mode
-    labels = {}
+    labels = {}   # 2d text label
+    letters = {}  # 3d billboard letters for nodes and generators
     mini_arrows = {}  # flying along the path, only visible when in simulation mode
     mini_shadows = {}  # shadow for each glider
     mini_losses = {}  # stalagtites below each glider
+    # arrows indication flow in cables
+    arrows_ij = {}
+    arrows_ji = {}
      
 
 
@@ -391,6 +409,11 @@ def func_toggle_grid(b):
     for line in Sim.grid:
         line.visible = b.checked
 
+def func_toggle_letters(b):
+    """toggle billboard letters"""
+    for bb in Sim.letters.values():
+        bb.visible = b.checked
+
 def func_toggle_legend(b):
     """toggle visibility of legend"""
     for l in Sim.gui["legend"]:
@@ -491,14 +514,31 @@ def func_simulation(b):
     #    for o in losslist:
     #        o.visible = False
     Sim.mini_losses = {}
+    # ----- new: ---
+    ## create ij and ji arrows along subcable pointlist
+    # TODO: make more than one arrow per subcable
+    Sim.arrows_ij = {}
+    Sim.arrows_ji = {}
+    for (i, j), curve in Sim.sub_cables.items():
+        pointlist = [p["pos"] for p in curve.slice(0, curve.npoints)]
+        for k, point1 in enumerate(pointlist):
+            color = vp.color.gray(0.75) if k % 2 == 0 else vp.color.gray(0.25) # TODO: better color cycling
+            if k == (len(pointlist)-1):
+                continue # already at last point in pointlist
+            point2 = pointlist[k+1]
+            diff = point2 - point1
 
+            Sim.arrows_ij[(i, j, k)] = vp.arrow(pos=point1, axis=diff, round=True, shaftwidth=1, headwidth=2, color=color, visible=True, pickable=False )
+            Sim.arrows_ji[(i,j,k)] = vp.arrow(pos=point2, axis=-diff, round=True, shaftwidth=1, headwidth=2, color=color, visible=False, pickable=False )
+
+    # ----- old: ---
     # ------------ create NEW mini_Arrows, one at each subnode------------
     # create little (moving) gliders for cable, loss, shadow
     for (i, j), curve in Sim.sub_cables.items():
         plist = [p["pos"] for p in curve.slice(0, curve.npoints)]
-        Sim.mini_arrows[(i, j)] = {}
-        Sim.mini_shadows[(i, j)] = {}
-        Sim.mini_losses[(i, j)] = {}
+        #Sim.mini_arrows[(i, j)] = {}
+        #Sim.mini_shadows[(i, j)] = {}
+        #Sim.mini_losses[(i, j)] = {}
         for number, point in enumerate(plist):
             new_number = number + 1
             if number == len(plist) - 1:
@@ -510,21 +550,21 @@ def func_simulation(b):
             n = 0
             while n * space_between < big_diff:
                 startpoint = point + vp.norm(p2 - point) * n * space_between
-                g = Glider(i, j, number, new_number,
-                           startpoint)  # is putting himself into Sim.mini_arrows[(i,j)][g.number]
-                shadow = vp.cylinder(pos=vp.vector(startpoint.x, 0, startpoint.z),
-                                     opacity=0.5,
-                                     color=vp.color.black,
-                                     radius=Sim.mini_arrow_base1,
-                                     axis=vp.vector(0, 0.02, 0),
-                                     pickable=False)
-                Sim.mini_shadows[(i, j)][g.number] = shadow
-                losspin = vp.arrow(pos=startpoint,
-                                   pickable=False,
-                                   axis=vp.vector(0, -0.1, 0),
-                                   color=Sim.colors["losses"],
-                                   size=vp.vector(1, 0.1, 0.1))
-                Sim.mini_losses[(i, j)][g.number] = losspin
+                #g = Glider(i, j, number, new_number,
+                #           startpoint)  # is putting himself into Sim.mini_arrows[(i,j)][g.number]
+                #shadow = vp.cylinder(pos=vp.vector(startpoint.x, 0, startpoint.z),
+                #                     opacity=0.5,
+                #                     color=vp.color.black,
+                #                     radius=Sim.mini_arrow_base1,
+                #                     axis=vp.vector(0, 0.02, 0),
+                #                     pickable=False)
+                #Sim.mini_shadows[(i, j)][g.number] = shadow
+                #losspin = vp.arrow(pos=startpoint,
+                #                   pickable=False,
+                #                   axis=vp.vector(0, -0.1, 0),
+                #                   color=Sim.colors["losses"],
+                #                   size=vp.vector(1, 0.1, 0.1))
+                #Sim.mini_losses[(i, j)][g.number] = losspin
                 n += 1
 
 
@@ -562,18 +602,24 @@ def load_layout():
         match mode:
             case None:
                 continue
+
             case "curves":
-                i, j, k, x, y, z = [float(x) for x in line.split(" ")]
+                i, j, k, x, y, z = [float(word) for word in line.split(" ")]
                 i, j, k = int(i), int(j), int(k)
                 pointpos = vp.vector(x,y,z)
                 Sim.sub_cables[(i,j)].modify(k, pointpos)
                 if (i,j,k) in Sim.sub_nodes:
                     Sim.sub_nodes[(i,j,k)].pos = pointpos
+                if k == int(Sim.number_of_sub_cables / 2):
+                    Sim.labels[f"cable {i}-{j}"].pos = pointpos
+
             case "nodes":
-                number, x, y, z = [float(x) for x in line.split(" ")]
+                number, x, y, z = [float(word) for word in line.split(" ")]
                 number = int(number)
                 npos = vp.vector(x,y,z)
                 Sim.nodes[number].pos = npos
+                Sim.letters[f"node {number}"].pos = npos + Sim.nodes[number].axis + vp.vector(0,1,0)
+                Sim.labels[f"node {number}"].pos = npos
                 if number in Sim.generator_lines:
                     Sim.generator_lines[number].modify(0, npos)
                 for (i,j), curve in Sim.cables.items():
@@ -581,20 +627,22 @@ def load_layout():
                         curve.modify(0, npos)
                     if j == number:
                         curve.modify(1, npos)
-            #case "curves":
-            #    number, x, y, z = [float(x) for x in line.split(" ")]
-            #    number = int(number)
 
             case "generators":
-                number, x, y, z = [float(x) for x in line.split(" ")]
+                number, x, y, z = [float(word) for word in line.split(" ")]
                 number = int(number)
                 gpos = vp.vector(x,y,z)
                 Sim.generators[number].pos = gpos
+                Sim.labels[f"generator {number}"].pos = gpos
+                Sim.letters[f"generator {number}"].pos = gpos + Sim.generators[number].axis + vp.vector(0, 1, 0)
                 Sim.discs[number].pos = gpos
                 Sim.pointer0[number].pos = gpos
                 Sim.pointer1[number].pos = gpos
                 Sim.generator_lines[number].modify(1, pos=gpos) # 1 is the generator, 0 is the node
                 #Sim.generator_lines[number].modify(0, pos=Sim.nodes[number].pos)
+
+            case _:
+                print("unhandled value for mode in layout file:", mode)
     print("loading of layout data was sucessfull")
 
 
@@ -687,156 +735,159 @@ def create_widgets():
     # Sim.button_end = vp.button(bind=func_end, text=">|", pos=Sim.scene.title_anchor)
 
     # Sim.label1 = vp.wtext(pos=Sim.scene.title_anchor, text="---hallo---")
-    Sim.scene.append_to_title("\n")
-    Sim.gui["timeframe"] = vp.wtext(pos=Sim.scene.title_anchor, text="timeframe:  ")
+    #Sim.scene.append_to_title("\n")
+    Sim.gui[" timeframe"] = vp.wtext(pos=Sim.scene.title_anchor, text="timeframe:  ")
     Sim.gui["frameslider"] = vp.slider(pos=Sim.scene.title_anchor, bind=func_time_slider, min=0, max=len(Data.df),
                                        length=700, step=1, disabled=True)
     Sim.gui["label_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=" 0")
     Sim.gui["label_last_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f" of {len(Data.df)} ")
     Sim.scene.append_to_title("\n")
     # ---- widgets below window in caption area --------------
-    Sim.scene.append_to_caption("<code>entinity:           |visible| label | y-factor         | "
-                                "<span style='background-color:#0000FF'>    too low    </span> | "  # blue
-                                "<span style='background-color:#00FFFF'>    low        </span> |  "       # cyan
-                                "<span style='background-color:#00FF00'>    good       </span> |  "      # green
-                                "<span style='background-color:#FFFF00'>    high       </span> |  "      # yellow
-                                "<span style='background-color:#FF0000'>    too high   </span> |  "  # red
+    Sim.scene.append_to_caption("<code>entinity:    |visible| label | y-factor |"
+                                "<span style='background-color:#0000FF'> too low  </span>|"  # blue
+                                "<span style='background-color:#00FFFF'> low     </span>|"       # cyan
+                                "<span style='background-color:#00FF00'> good     </span>|"      # green
+                                "<span style='background-color:#FFFF00'> high    </span>|"      # yellow
+                                "<span style='background-color:#FF0000'> too high</span>|"  # red
                                 " min / max |</code>\n")
-    Sim.scene.append_to_caption("<code>nodes:              |  </code>")
+    Sim.scene.append_to_caption("<code>nodes:       |  </code>")
     Sim.gui["box_node"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True, bind=func_toggle_nodes)
-    Sim.gui["box_node_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True, bind=func_toggle_nodes_labels)
+    Sim.gui["box_node_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=False, bind=func_toggle_nodes_labels)
 
-    Sim.gui["factor_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_nodes,
+    Sim.gui["factor_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_nodes,width=50,
                                         # prompt="nodes:",       # prompt does not work with python yet
                                         type="numeric", text="1.0")
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_low_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_nodes,
+    Sim.gui["color_too_low_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_nodes,width=50,
                                         type="numeric", text=f"{Data.nodes_min}") # TODO : get value for nodes
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_low_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_nodes,
+    Sim.gui["color_low_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_nodes,width=50,
                                                type="numeric", text="-5.0")  # TODO : get  value for nodes
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_nodes,
+    Sim.gui["color_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_nodes,width=50,
                                            type="numeric", text="0.0")  # TODO : get value for nodes
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_high_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_nodes,
+    Sim.gui["color_high_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_nodes,width=50,
                                        type="numeric", text="5.0")  # TODO : get value for nodes
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_high_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_nodes,
+    Sim.gui["color_too_high_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_nodes,width=50,
                                        type="numeric", text=f"{Data.nodes_max}")  # TODO : get value for nodes
-    Sim.scene.append_to_caption("<code> | </code>")
+    Sim.scene.append_to_caption("<code>| </code>")
     Sim.gui["min_max_nodes"] = vp.wtext(pos = Sim.scene.caption_anchor, text = "? / ?")
     Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>generators:         |  </code>")
+    Sim.scene.append_to_caption("<code>generators:  |  </code>")
     Sim.gui["box_generator"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
                                   bind=func_toggle_generators)
-    Sim.gui["box_generator_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
+    Sim.gui["box_generator_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=False,
                                   bind=func_toggle_generator_labels)
-    Sim.gui["factor_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_generators,
+    Sim.gui["factor_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_generators,width=50,
                                              # prompt="generators:", # prompt does not work with python yet
                                              type="numeric", text="1.0")
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_generators,
+    Sim.gui["color_too_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_generators,width=50,
                                         type="numeric", text="-10.0") # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_generators,
+    Sim.gui["color_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_generators,width=50,
                                                type="numeric", text="-5.0")  # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_generators,
+    Sim.gui["color_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_generators,width=50,
                                            type="numeric", text="0.0")  # TODO : get value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_generators,
+    Sim.gui["color_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_generators,width=50,
                                        type="numeric", text="5.0")  # TODO : get value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_generators,
+    Sim.gui["color_too_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_generators,width=50,
                                        type="numeric", text="10.0")  # TODO : get value
-    Sim.scene.append_to_caption("<code> | </code>")
+    Sim.scene.append_to_caption("<code>| </code>")
     Sim.gui["min_max_generators"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>generators angle:   |  </code>")
-    Sim.gui["box_generators_angle"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |       | </code>", checked=True,
+    Sim.scene.append_to_caption("<code>    - angle: |  </code>")
+    Sim.gui["box_generators_angle"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
                                            bind=func_toggle_generators_angle)
-    Sim.scene.append_to_caption("<code>                  | </code>")
-    Sim.gui["color_too_low_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_generators_angle,
+    Sim.scene.append_to_caption("<code>                 | </code>")
+    Sim.gui["color_too_low_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_generators_angle,width=50,
                                                     type="numeric", text="-10.0")  # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_low_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_generators_angle,
+    Sim.gui["color_low_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_generators_angle,width=50,
                                                 type="numeric", text="-5.0")  # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_generators_angle,
+    Sim.gui["color_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_generators_angle,width=50,
                                             type="numeric", text="0.0")  # TODO : get value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_high_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_generators_angle,
+    Sim.gui["color_high_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_generators_angle,width=50,
                                                  type="numeric", text="5.0")  # TODO : get value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_high_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_generators_angle,
+    Sim.gui["color_too_high_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_generators_angle,width=50,
                                                      type="numeric", text="10.0")  # TODO : get value
-    Sim.scene.append_to_caption("<code> | </code>")
+    Sim.scene.append_to_caption("<code>| </code>")
     Sim.gui["min_max_generators_angle"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
 
-    Sim.scene.append_to_caption("<code>cables:             |  </code>")
+    Sim.scene.append_to_caption("<code>cables:      |  </code>")
     Sim.gui["box_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True, disabled=True,
                                   bind=func_toggle_cables)
     Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True, bind=func_toggle_cable_labels)
-    Sim.gui["factor_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_cables,
+    Sim.gui["factor_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_cables,width=50,
                                          # prompt="nodes:",       # prompt does not work with python yet
                                          type="numeric", text="0.01")
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_cables,
+    Sim.gui["color_too_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_cables,width=50,
                                                     type="numeric", text="-10.0")  # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_cables,
+    Sim.gui["color_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_cables,width=50,
                                                 type="numeric", text="-5.0")  # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_cables,
+    Sim.gui["color_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_cables,width=50,
                                             type="numeric", text="0.0")  # TODO : get value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_cables,
+    Sim.gui["color_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_cables,width=50,
                                                  type="numeric", text="5.0")  # TODO : get value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_cables,
+    Sim.gui["color_too_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_cables,width=50,
                                                      type="numeric", text="10.0")  # TODO : get value
-    Sim.scene.append_to_caption("<code> | </code>")
+    Sim.scene.append_to_caption("<code>| </code>")
     Sim.gui["min_max_cables"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>losses:             |  </code>")
+    Sim.scene.append_to_caption("<code>losses:      |  </code>")
     Sim.gui["box_losses"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=False,
                                         disabled=True, bind=func_toggle_losses)
     Sim.scene.append_to_caption("<code>     | </code>")  # because no labels for losses (it's in the cable lable)
-    Sim.gui["factor_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_losses,
+    Sim.gui["factor_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_losses, width=50,
                                          type="numeric", text="1.0")
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_low_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_losses,
+    Sim.gui["color_too_low_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_losses,width=50,
                                                     type="numeric", text="-10.0")  # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_low_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_losses,
+    Sim.gui["color_low_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_losses, width=50,
                                                 type="numeric", text="-5.0")  # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_losses,
+    Sim.gui["color_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_losses, width=50,
                                             type="numeric", text="0.0")  # TODO : get value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_high_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_losses,
+    Sim.gui["color_high_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_losses, width=50,
                                                  type="numeric", text="5.0")  # TODO : get value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_too_high_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_losses,
+    Sim.gui["color_too_high_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_losses, width=50,
                                                      type="numeric", text="10.0")  # TODO : get value
-    Sim.scene.append_to_caption("<code> | </code>")
+    Sim.scene.append_to_caption("<code>| </code>")
     Sim.gui["min_max_losses"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>  gliders:          |  </code>")
+    Sim.scene.append_to_caption("<code>  gliders:   |  </code>")
     Sim.gui["box_gliders"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=False, disabled=True,
                                   bind=func_toggle_gliders)
     Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>  shadows:          |  </code>")
+    Sim.scene.append_to_caption("<code>  shadows:   |  </code>")
     Sim.gui["box_shadows"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=False, disabled=True,
                                   bind=func_toggle_shadows)
     Sim.scene.append_to_caption("\n")
 
-    Sim.scene.append_to_caption("<code>grid:               |  </code>")
+    Sim.scene.append_to_caption("<code>grid:        |  </code>")
     Sim.gui["box_grid"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True, bind=func_toggle_grid)
     Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>legend:             |  </code>")
+    Sim.scene.append_to_caption("<code>letters:     |  </code>")
+    Sim.gui["box_letters"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True, bind=func_toggle_letters)
+    Sim.scene.append_to_caption("\n")
+    Sim.scene.append_to_caption("<code>legend:      |  </code>")
     Sim.gui["box_legend"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=False, bind=func_toggle_legend)
     Sim.scene.append_to_caption("\n")
     # legend:
@@ -885,57 +936,63 @@ def mouse_move():
     if not (-Sim.grid_max / 2 <= Sim.scene.mouse.pos.z <= Sim.grid_max / 2):
         o.pos.z = max(-Sim.grid_max / 2, o.pos.z)
         o.pos.z = min(Sim.grid_max / 2, o.pos.z)
-    if o.what == "node":
-        Sim.labels[f"node {o.number}"].pos = o.pos
-        # re-arrange all cables that are connected to this node
-        i = o.number
-        for (a, b), cable in Sim.cables.items():
-            if a == i:
-                cable.modify(0, pos=Sim.nodes[i].pos)
-                cable.modify(1, pos=Sim.nodes[b].pos)
-            if b == i:
-                cable.modify(0, pos=Sim.nodes[a].pos)
-                cable.modify(1, pos=Sim.nodes[i].pos)
-        # sub-discs
-        for (i2, j2, k2), subdisc in Sim.sub_nodes.items():
-            if (i2 != i) and (j2 != i):
-                continue
-            start = Sim.nodes[i2].pos
-            end = Sim.nodes[j2].pos
-            diff = end - start
-            pointlist = []
-            pointlist.append(start)
-            for k in range(1, Sim.number_of_sub_cables):  # 6 subnodes
-                p = start + k * vp.norm(diff) * vp.mag(diff) / (Sim.number_of_sub_cables)  # divide by
-                Sim.sub_nodes[(i2, j2, k)].pos = p
-                pointlist.append(p)
-                # TODO: sub-optimal code, iterates more often then necessary over all subdiscs
-                if k == int(Sim.number_of_sub_cables / 2):
-                    Sim.labels[f"cable {i2}-{j2}"].pos = p
-            pointlist.append(end)
-            for number, point in enumerate(pointlist):
-                Sim.sub_cables[(i2, j2)].modify(number, pos=point)
-        # exist connected generator?
-        if o.number in Sim.generator_lines.keys():
-            Sim.generator_lines[o.number].modify(0, pos=o.pos)
-    elif o.what == "generator":
-        Sim.labels[f"generator {o.number}"].pos = o.pos
-        # mouve both pointers and disc
-        Sim.pointer0[o.number].pos = o.pos
-        Sim.pointer1[o.number].pos = o.pos
-        Sim.discs[o.number].pos = o.pos
-        # update generator_line
-        Sim.generator_lines[o.number].modify(1, pos=o.pos)
-    elif o.what == "subnode":
-        # change only the attached sub-cables
-        i, j, k = o.number
-        Sim.sub_cables[i, j].modify(k, pos=o.pos)
-        if k == int(Sim.number_of_sub_cables / 2):
-            Sim.labels[f"cable {i}-{j}"].pos = o.pos
-
-        # elif o.what == "subdisc":
-        #    i,j,k = o.number
-        #    for subdisc in Sim.sub_discs[i,j].values():
+    match o.what:
+        case "node":
+            Sim.labels[f"node {o.number}"].pos = o.pos
+            Sim.letters[f"node {o.number}"].pos.x = o.pos.x
+            Sim.letters[f"node {o.number}"].pos.z = o.pos.z
+            # re-arrange all cables that are connected to this node
+            i = o.number
+            for (a, b), cable in Sim.cables.items():
+                if a == i:
+                    cable.modify(0, pos=Sim.nodes[i].pos)
+                    cable.modify(1, pos=Sim.nodes[b].pos)
+                if b == i:
+                    cable.modify(0, pos=Sim.nodes[a].pos)
+                    cable.modify(1, pos=Sim.nodes[i].pos)
+            # sub-discs
+            for (i2, j2, k2), subdisc in Sim.sub_nodes.items():
+                if (i2 != i) and (j2 != i):
+                    continue
+                start = Sim.nodes[i2].pos
+                end = Sim.nodes[j2].pos
+                diff = end - start
+                pointlist = []
+                pointlist.append(start)
+                for k in range(1, Sim.number_of_sub_cables):  # 6 subnodes
+                    p = start + k * vp.norm(diff) * vp.mag(diff) / (Sim.number_of_sub_cables)  # divide by
+                    Sim.sub_nodes[(i2, j2, k)].pos = p
+                    pointlist.append(p)
+                    # TODO: sub-optimal code, iterates more often then necessary over all subdiscs
+                    if k == int(Sim.number_of_sub_cables / 2):
+                        Sim.labels[f"cable {i2}-{j2}"].pos = p
+                pointlist.append(end)
+                for number, point in enumerate(pointlist):
+                    Sim.sub_cables[(i2, j2)].modify(number, pos=point)
+            # exist connected generator?
+            if o.number in Sim.generator_lines.keys():
+                Sim.generator_lines[o.number].modify(0, pos=o.pos)
+        case "generator":
+            Sim.labels[f"generator {o.number}"].pos = o.pos
+            Sim.letters[f"generator {o.number}"].pos.x = o.pos.x
+            Sim.letters[f"generator {o.number}"].pos.z = o.pos.z
+            # mouve both pointers and disc
+            Sim.pointer0[o.number].pos = o.pos
+            Sim.pointer1[o.number].pos = o.pos
+            Sim.discs[o.number].pos = o.pos
+            # update generator_line
+            Sim.generator_lines[o.number].modify(1, pos=o.pos)
+        case "subnode":
+            # change only the attached sub-cables
+            i, j, k = o.number
+            Sim.sub_cables[i, j].modify(k, pos=o.pos)
+            if k == int(Sim.number_of_sub_cables / 2):
+                Sim.labels[f"cable {i}-{j}"].pos = o.pos
+        case _:
+            pass # something else got dragged
+            # elif o.what == "subdisc":
+            #    i,j,k = o.number
+            #    for subdisc in Sim.sub_discs[i,j].values():
 
 
 # def mouseclick(event):
@@ -989,20 +1046,23 @@ def create_stuff():
                                         radius=Sim.radius["nodes"],
                                         axis=vp.vector(0, 2, 0),
                                         pickable=True,
-                                        texture={'file': os.path.join("assets", 'energy1.png'),
-                                                 # 'bumpmap': bumpmaps.stucco,
-                                                 'place': 'right',
-                                                 'flipx': False,
-                                                 'flipy': False,
-                                                 'turn': -1,
-                                                 },
+                                        #texture={'file': os.path.join("assets", 'energy1.png'),
+                                        #         # 'bumpmap': bumpmaps.stucco,
+                                        #         'place': 'right',
+                                        #         'flipx': False,
+                                        #         'flipy': False,
+                                        #         'turn': -1,
+                                        #         },
                                         )
+        Sim.letters[f"node {number}"] = vp.text(text=f"N{number}", color=vp.color.black,
+                                            pos=vp.vector(end_point_1.x, 3, end_point_1.z),
+                                            billboard=True, emissive=True, pickable=False, align="center")
 
         Sim.nodes[number].what = "node"
         Sim.nodes[number].number = number
         Sim.labels[f"node {number}"] = vp.label(pos=end_point_2, text=f"n {number}", height=10,
                                                 color=vp.color.white,
-                                                visible=True)
+                                                visible=False)
         # add (wind) generators in outer circle (if number is matching)
         if number in Data.generator_numbers:
             # CREATE GENERATOR
@@ -1014,21 +1074,25 @@ def create_stuff():
                                                  radius=Sim.radius["generators"],
                                                  axis=vp.vector(0, 3, 0),
                                                  pickable=True,
-                                                 texture={'file': os.path.join("assets", 'energy2.png'),
-                                                          # 'bumpmap': bumpmaps.stucco,
-                                                          'place': 'right',
-                                                          'flipx': False,
-                                                          'flipy': False,
-                                                          'turn': -1,
-                                                          },
+                                                 #texture={'file': os.path.join("assets", 'energy2.png'),
+                                                 #         # 'bumpmap': bumpmaps.stucco,
+                                                 #         'place': 'right',
+                                                 #         'flipx': False,
+                                                 #         'flipy': False,
+                                                 #         'turn': -1,
+                                                 #         },
                                                  )
             Sim.generators[number].what = "generator"
             Sim.generators[number].number = number
+            Sim.letters[f"generator {number}"] = vp.text(text=f"G{number}", color=vp.color.black,
+                                                pos=vp.vector(end_point_3.x, 4, end_point_3.z),
+                                                billboard=True, emissive=True, pickable=False, align="center")
+
             Sim.labels[f"generator {number}"] = vp.label(pos=vp.vector(end_point_4.x, 0, end_point_4.z),
                                                          text=f"g {number}",
                                                          height=10,
                                                          color=vp.color.white,
-                                                         visible=True,
+                                                         visible=False,
                                                          )
             # pointer0 always points like x-axis
             # ------- pointers for angle ------
@@ -1069,7 +1133,7 @@ def create_stuff():
                             angle=vp.radians(360 / len(Data.node_numbers)),
                             axis=vp.vector(0, 1, 0),
                             )
-    # ====================================== end of original code from scrip009 ==================
+
     # ----- create CABLES ----
     for i, to_number_list in Data.cables_dict.items():
         for j in to_number_list:
@@ -1109,6 +1173,8 @@ def create_stuff():
             pointlist.append(end)
             # -- create sub-cables between sub-discs
             Sim.sub_cables[(i, j)] = vp.curve(color=vp.color.magenta, radius=0.15, pos=pointlist, pickable=False)
+
+
 
 
 def get_Data_min_max():
@@ -1177,6 +1243,7 @@ def update_stuff():
         volt = Data.df[col_name_node(number)][Sim.i]
         cyl.axis = vp.vector(0, volt * Sim.factor["nodes"], 0)
         Sim.labels[f"node {number}"].text = f"n {number}: {volt} V"
+        Sim.letters[f"node {number}"].pos.y = cyl.axis.y + 1
 
 
     # --------- generators ----------------
@@ -1194,6 +1261,7 @@ def update_stuff():
         p1_axis_vector = vp.rotate(p1_axis_vector, angle=vp.radians(g_angle), axis=vp.vector(0, 1, 0))
         Sim.pointer1[number].axis = vp.vector(p1_axis_vector.x, p1_axis_vector.y, p1_axis_vector.z)
         Sim.labels[f"generator {number}"].text = f"g {number}: {power} MW, {g_angle}°"
+        Sim.letters[f"generator {number}"].pos.y = cyl.axis.y + 1
         # print(Sim.i, number, power)
 
     # ------ cables -----
@@ -1209,18 +1277,34 @@ def update_stuff():
             # print(number, target, "power is:", power1, power2, loss, numtar)
             if f"cable {number}-{target}" in Sim.labels:
                 Sim.labels[f"cable {number}-{target}"].text = f"c {number}-->{target}: {power} ({loss}) W {numtar}"
+                # ---- new- --
+                for k in range(Sim.number_of_sub_cables):
+                    # TODO: flexible number of sub_cables?
+                    # TODO: cable_factor
+                    if numtar:
+                        Sim.arrows_ij[(number, target, k)].visible = True
+                        Sim.arrows_ji[(number, target, k)].visible = False
+                        Sim.arrows_ij[(number, target, k)].shaftwidth = power  * Sim.factor["cables"]
+                        Sim.arrows_ij[(number, target, k)].headwidth = power  * Sim.factor["cables"] +1
+                    else:
+                        Sim.arrows_ij[(number, target, k)].visible = False
+                        Sim.arrows_ji[(number, target, k)].visible = True
+                        Sim.arrows_ji[(number, target, k)].shaftwidth = power  * Sim.factor["cables"]
+                        Sim.arrows_ji[(number, target, k)].headwidth = power  * Sim.factor["cables"] + 1
+
+                # --- old ---
                 # let sub_cables stay on the ground
                 # Sim.sub_cables[(number,target)].origin.y = power * Sim.factor["cables"]
                 # ----- mini-arrows ------
                 # print(Sim.mini_arrows[(number, target)])
                 # gliderdict = Sim.mini_arrows[(number, target)]:
                 # print("arrow:", n, number, target, arrow)
-                for n, glider in Sim.mini_arrows[(number, target)].items():
-                    glider.pos.y = power * Sim.factor["arrows"]
-                    glider.numtar = numtar
-                    Sim.mini_losses[(number, target)][glider.number].pos.y = glider.pos.y
-                    Sim.mini_losses[(number, target)][glider.number].axis = vp.vector(0, -loss * Sim.factor["losses"],
-                                                                                      0)
+                #for n, glider in Sim.mini_arrows[(number, target)].items():
+                #    glider.pos.y = power * Sim.factor["arrows"]
+                #    glider.numtar = numtar
+                #    Sim.mini_losses[(number, target)][glider.number].pos.y = glider.pos.y
+                #    Sim.mini_losses[(number, target)][glider.number].axis = vp.vector(0, -loss * Sim.factor["losses"],
+                #                                                                      0)
 
 
 def main():
