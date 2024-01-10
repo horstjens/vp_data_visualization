@@ -2,6 +2,7 @@ import pandas as pd
 import vpython as vp
 
 """
+improved Prototype
 generators (circles in diagram)
         >angle (for windmills) (-180° to 180°)
         >power 
@@ -156,6 +157,11 @@ def check5_func(b):
     for line in Sim.gridlines:
         line.visible = b.checked
 
+def check6_func(b):
+    """toggles loss rectangles for cables"""
+    for red_wall in Sim.losses.values():
+        red_wall.visible = b.checked
+
 
 def input1_func(b):
     print("the y factor for generators is now:", b.number)
@@ -184,6 +190,11 @@ def input4_func(b):
 def input5_func(b):
     print("the z factor for cables base is now:", b.number)
     Sim.factor_cables_z = b.number
+    update_stuff()
+
+def input6_func(b):
+    print("the y factor for losses is now:", b.number)
+    Sim.factor_losses_y = b.number
     update_stuff()
 
 
@@ -219,6 +230,7 @@ class Sim:
     gridlines = []
     labels = {}
     nodes = {}
+    losses = {}
     generators = {}
     pointer0 = {}  # to display angle at each generator
     pointer1 = {}  # to display angle at each generator
@@ -229,6 +241,7 @@ class Sim:
     factor_cables = 0.01
     factor_cables_x = 0.01
     factor_cables_z = 0.01
+    factor_losses_y = 10.0
 
 
 def create_widgets():
@@ -251,6 +264,7 @@ def create_widgets():
     Sim.box3 = vp.checkbox(pos=Sim.scene.caption_anchor, text="cable labels ", checked=False, bind=check3_func)
     # Sim.box4 = vp.checkbox(pos=Sim.scene.caption_anchor, text="base cables ", checked=False, bind=check4_func)
     Sim.box5 = vp.checkbox(pos=Sim.scene.caption_anchor, text="grid ", checked=True, bind=check5_func)
+    Sim.box6 = vp.checkbox(pos=Sim.scene.caption_anchor, text="losses", checked=False, bind=check6_func)
     Sim.scene.append_to_caption("\n")
     vp.wtext(pos=Sim.scene.caption_anchor, text="factor (confirm with ENTER) for: generators (y):")
     Sim.input1 = vp.winput(pos=Sim.scene.caption_anchor, bind=input1_func,
@@ -272,10 +286,14 @@ def create_widgets():
     Sim.input5 = vp.winput(pos=Sim.scene.caption_anchor, bind=input5_func,
                            # prompt="nodes:",       # prompt does not work with python yet
                            type="numeric", text="0.01")
+    vp.wtext(pos=Sim.scene.caption_anchor,text="losses (y):")
+    Sim.input6 = vp.winput(pos=Sim.scene.caption_anchor, bind=input6_func,
+                           type="numeric", text="10.0")
     # legend:
     vp.label(text="nodes (busbars)", pixel_pos= True, pos=vp.vector(10, 790,0), color=vp.color.blue, align="left", box=False)
     vp.label(text="generators", pixel_pos=True, pos=vp.vector(10, 770,0), color=vp.color.yellow, align="left", box=False)
     vp.label(text="cables (connections)", pixel_pos=True, pos=vp.vector(10, 750,0), color=vp.color.magenta, align="left", box=False)
+    vp.label(text="losses (connections)", pixel_pos=True, pos=vp.vector(10, 730,0), color=vp.color.red, align="left", box=False)
     #vp.label(text="hold right mouse button and move to tilt camera. Use mouse wheel to zoom. Use shift and mouse button to pan",
     #         pixel_pos=True, pos=vp.vector(50,790,0), color=vp.color.white, align="left", box=False")
 
@@ -367,8 +385,17 @@ def create_stuff():
             tv = vp.vector(Sim.nodes[t].pos.x, Sim.nodes[t].pos.y, Sim.nodes[t].pos.z)
             # base cable (invisible at start)
             # Sim.cables[(o_number, t)] = vp.arrow(pos=ov, axis=tv-ov, color=vp.color.green, shaftwidth=1, visible=False)
+            middle = ov + vp.norm(tv - ov) * vp.mag(tv - ov) / 2
+            # ---- create losses (red rectangles) for all cables. the loss is the difference between the positive (sending) and the negative (reciving) value
+            loss = 20
+            Sim.losses[(o_number, t)] = vp.box(pos=middle + vp.vector(0, -loss/2,0),
+                                              color=vp.color.red,
+                                              axis=(tv-ov)/2,
+                                              size=vp.vector(vp.mag(tv-ov), -loss, 1),
+                                              visible=True)
             # base cable lable
-            Sim.labels[f"cable {o_number} {t}"] = vp.label(pos=ov + vp.norm(tv - ov) * vp.mag(tv - ov) / 2,
+            # pos=ov + vp.norm(tv - ov) * vp.mag(tv - ov) / 2,
+            Sim.labels[f"cable {o_number} {t}"] = vp.label(pos=middle,
                                                            text=f"c {o_number} {t}",
                                                            height=10,
                                                            color=vp.color.white,
@@ -404,6 +431,9 @@ def create_stuff():
                                                                  width=Sim.mini_arrow_base2,
                                                                  ))
                 end += vp.norm(tv - ov) * Sim.mini_arrow_distance
+
+
+
     # done with creating stuff - make ONE update for correcting y values
 
     update_stuff()
@@ -454,6 +484,17 @@ def update_stuff():
                 glider.pos.y = power * Sim.factor_cables
                 #glider.length = power * Sim.factor_cables_x
                 glider.width = power * Sim.factor_cables_z
+            if power > 0:
+                # calculate loss
+                try:
+                    loss = power + Data.df[col_name_cable(target, number)][Sim.i]
+                except:
+                    print(f"loss not found for cable: {target}, {number}")
+                    continue
+                # update red loss wall
+                Sim.losses[(number, target)].size.y = -loss * Sim.factor_losses_y
+                Sim.losses[(number, target)].pos.y = (-loss * Sim.factor_losses_y)/2
+                Sim.labels[f"cable {number} {target}"].text = f"c {number}-->{target}: {power} W loss: {loss:.2f} W"
 
 
 def mainloop():
