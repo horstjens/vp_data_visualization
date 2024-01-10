@@ -1,1 +1,15 @@
+map: openstreetmap
+https://openclipart.org/download/116599/solar-panel.svg
+    https://openclipart.org/image/400px/116599
+https://openclipart.org/download/282339/OldifluffWindTurbine.svg
+    https://openclipart.org/image/400px/282339
+https://openclipart.org/download/290893/powersources.svg
+
+https://openclipart.org/download/295670/ClasseEnergetica.svg
+
+https://openclipart.org/download/21192/waielbi-electric-symbols.svg
+https://openclipart.org/download/189822/holo-icons.svg
+https://pixabay.com/photos/energy-save-up-electricity-7408161     
+    energy-7408161_640.jpg
+
 
