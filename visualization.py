@@ -1,8 +1,6 @@
 import pandas as pd
 import vpython as vp
 
-
-
 """
 generators (circles in diagram)
         >angle (for windmills) (-180° to 180°)
@@ -16,6 +14,8 @@ cables connect nodes with each powers
        > power from/to
 
 """
+
+
 class Data:
     # create a pandas dataframe from csv
     df = pd.read_csv("raw_data.csv")
@@ -23,7 +23,6 @@ class Data:
 
     time_col_name = "Time(s)"
     generator_numbers = [i for i in range(30, 40)]  # numbers from 30 to 39
-
 
     # col_name for generator 30 angle: "ANGL 30[30 1.0000]1"
     # col_name for generator 30 power: "POWR 30[30 1.0000]1"
@@ -36,6 +35,7 @@ class Data:
 def col_name_angle(generator_number):
     return f"ANGL {generator_number}[{generator_number} 1.0000]1"
 
+
 def col_name_power(generator_number):
     return f"POWR {generator_number}[{generator_number} 1.0000]1"
 
@@ -43,6 +43,7 @@ def col_name_power(generator_number):
 def col_name_node(node_number):
     # col_name for node 1: "VOLT 1 [1 1.0000]"
     return f"VOLT {node_number} [{node_number} 1.0000]"
+
 
 def col_name_cable(from_number, to_number):
     return f"POWR {from_number} TO {to_number} CKT '1 '"
@@ -85,14 +86,24 @@ def create_data():
     # arrange the generators in an even bigger circle with the sam origin
 
 
-
 # helper functions for vpython widgets
 
 def button_start_func(b):
+    """stop and rewind"""
     print("start was pressed", b.text)
+    Sim.animation_running = False
+    Sim.button_play.text = "Play >"
+    Sim.i = 0
+    Sim.slider1.value = 0
+    Sim.label3.text = str(0)
+
+
+
+
 
 def button_end_func(b):
     print("end was pressed", b.text)
+
 
 def button_play_func(b):
     print("play button was pressed", b.text)
@@ -139,25 +150,42 @@ def check4_func(b):
     for name in Sim.cables:
         Sim.cables[name].visible = b.checked
 
+
 def check5_func(b):
     """toggles grid lines"""
     for line in Sim.gridlines:
         line.visible = b.checked
+
 
 def input1_func(b):
     print("the y factor for generators is now:", b.number)
     Sim.factor_generators = b.number
     update_stuff()
 
+
 def input2_func(b):
     print("the y factor for nodes is now:", b.number)
-    Sim.factor_nodes= b.number
+    Sim.factor_nodes = b.number
     update_stuff()
+
 
 def input3_func(b):
     print("the y factor for cables is now:", b.number)
     Sim.factor_cables = b.number
     update_stuff()
+
+
+def input4_func(b):
+    print("the x factor for cables base is now:", b.number)
+    Sim.factor_cables_x = b.number
+    update_stuff()
+
+
+def input5_func(b):
+    print("the z factor for cables base is now:", b.number)
+    Sim.factor_cables_z = b.number
+    update_stuff()
+
 
 class Sim:
     """all important vpython constants are in this class, to make referencing from outside more easy"""
@@ -169,7 +197,7 @@ class Sim:
     POINTER1_RADIUS = GENERATOR_RADIUS + 15
     geo_radius1 = 200
     geo_radius2 = 225
-    animation_duration = 20 # seconds
+    animation_duration = 20  # seconds
     frame_duration = animation_duration / len(Data.df)
     animation_running = False
     scene = vp.canvas(title='Bruce training data',
@@ -194,23 +222,26 @@ class Sim:
     generators = {}
     pointer0 = {}  # to display angle at each generator
     pointer1 = {}  # to display angle at each generator
-    cables = {} # base arrow from origin to target, will be invisible  # TODO delete?
-    mini_arrows = {} # list of moving arrows
+    cables = {}  # base arrow from origin to target, will be invisible  # TODO delete?
+    mini_arrows = {}  # list of moving arrows
     factor_generators = 1.0
     factor_nodes = 1.0
     factor_cables = 0.01
+    factor_cables_x = 0.01
+    factor_cables_z = 0.01
+
 
 def create_widgets():
     # ---- widgets above window in title area -------
     Sim.button_start = vp.button(bind=button_start_func, text="|<", pos=Sim.scene.title_anchor)
     Sim.button_play = vp.button(bind=button_play_func, text="play >", pos=Sim.scene.title_anchor)
-    Sim.button_end = vp.button(bind=button_end_func, text=">|", pos=Sim.scene.title_anchor)
+    #Sim.button_end = vp.button(bind=button_end_func, text=">|", pos=Sim.scene.title_anchor)
 
-    Sim.label1 = vp.wtext(pos=Sim.scene.title_anchor, text="---hallo---")
+    #Sim.label1 = vp.wtext(pos=Sim.scene.title_anchor, text="---hallo---")
     Sim.scene.append_to_title("\n")
     Sim.label2 = vp.wtext(pos=Sim.scene.title_anchor, text="timeframe:  ")
     Sim.slider1 = vp.slider(pos=Sim.scene.title_anchor, bind=slider1_func, min=0, max=len(Data.df),
-                        length=700, step=1)
+                            length=700, step=1)
     Sim.label3 = vp.wtext(pos=Sim.scene.title_anchor, text=" 0")
     Sim.label4 = vp.wtext(pos=Sim.scene.title_anchor, text=f" of {len(Data.df)} ")
     Sim.scene.append_to_title("\n")
@@ -218,21 +249,35 @@ def create_widgets():
     Sim.box1 = vp.checkbox(pos=Sim.scene.caption_anchor, text="node labels ", checked=False, bind=check1_func)
     Sim.box2 = vp.checkbox(pos=Sim.scene.caption_anchor, text="generator labels ", checked=False, bind=check2_func)
     Sim.box3 = vp.checkbox(pos=Sim.scene.caption_anchor, text="cable labels ", checked=False, bind=check3_func)
-    #Sim.box4 = vp.checkbox(pos=Sim.scene.caption_anchor, text="base cables ", checked=False, bind=check4_func)
+    # Sim.box4 = vp.checkbox(pos=Sim.scene.caption_anchor, text="base cables ", checked=False, bind=check4_func)
     Sim.box5 = vp.checkbox(pos=Sim.scene.caption_anchor, text="grid ", checked=True, bind=check5_func)
     Sim.scene.append_to_caption("\n")
-    vp.wtext(pos=Sim.scene.caption_anchor, text="y factor (confirm with ENTER) for: generators:")
+    vp.wtext(pos=Sim.scene.caption_anchor, text="factor (confirm with ENTER) for: generators (y):")
     Sim.input1 = vp.winput(pos=Sim.scene.caption_anchor, bind=input1_func,
-                           #prompt="generators:", # prompt does not work with python yet
+                           # prompt="generators:", # prompt does not work with python yet
                            type="numeric", text="1.0")
-    vp.wtext(pos=Sim.scene.caption_anchor, text=" nodes:")
+    vp.wtext(pos=Sim.scene.caption_anchor, text=" nodes (y):")
     Sim.input2 = vp.winput(pos=Sim.scene.caption_anchor, bind=input2_func,
-                           #prompt="nodes:",       # prompt does not work with python yet
+                           # prompt="nodes:",       # prompt does not work with python yet
                            type="numeric", text="1.0")
-    vp.wtext(pos=Sim.scene.caption_anchor, text=" cables:")
-    Sim.input2 = vp.winput(pos=Sim.scene.caption_anchor, bind=input3_func,
+    vp.wtext(pos=Sim.scene.caption_anchor, text=" cables: (y):")
+    Sim.input3 = vp.winput(pos=Sim.scene.caption_anchor, bind=input3_func,
                            # prompt="nodes:",       # prompt does not work with python yet
                            type="numeric", text="0.01")
+    #vp.wtext(pos=Sim.scene.caption_anchor, text="x (base):")
+    #Sim.input4 = vp.winput(pos=Sim.scene.caption_anchor, bind=input4_func,
+    #                       # prompt="nodes:",       # prompt does not work with python yet
+    #                       type="numeric", text="0.01")
+    vp.wtext(pos=Sim.scene.caption_anchor, text="z (base)")
+    Sim.input5 = vp.winput(pos=Sim.scene.caption_anchor, bind=input5_func,
+                           # prompt="nodes:",       # prompt does not work with python yet
+                           type="numeric", text="0.01")
+    # legend:
+    vp.label(text="nodes (busbars)", pixel_pos= True, pos=vp.vector(10, 790,0), color=vp.color.blue, align="left", box=False)
+    vp.label(text="generators", pixel_pos=True, pos=vp.vector(10, 770,0), color=vp.color.yellow, align="left", box=False)
+    vp.label(text="cables (connections)", pixel_pos=True, pos=vp.vector(10, 750,0), color=vp.color.magenta, align="left", box=False)
+    #vp.label(text="hold right mouse button and move to tilt camera. Use mouse wheel to zoom. Use shift and mouse button to pan",
+    #         pixel_pos=True, pos=vp.vector(50,790,0), color=vp.color.white, align="left", box=False")
 
 
 def create_stuff():
@@ -240,10 +285,15 @@ def create_stuff():
     Sim.xarrow = vp.arrow(axis=vp.vector(10, 0, 0), color=vp.color.red)
     Sim.yarrow = vp.arrow(axis=vp.vector(0, 10, 0), color=vp.color.green)
     Sim.zarrow = vp.arrow(axis=vp.vector(0, 0, 10), color=vp.color.blue)
+    Sim.xchar = vp.text(text="x", pos=vp.vector(11,0,0), color=vp.color.red)
+    Sim.ychar = vp.text(text="y", pos=vp.vector(0, 11, 0), color=vp.color.green)
+    Sim.zchar = vp.text(text="z", pos=vp.vector(0,0,11), color=vp.color.blue)
     # make a grid
     for i in range(-Sim.GRID_MAX, Sim.GRID_MAX + 1, Sim.GRID_STEP):
-        Sim.gridlines.append(vp.curve(vp.vector(i, 0, -Sim.GRID_MAX), vp.vector(i, 0, Sim.GRID_MAX), radius=0.1, color=vp.color.cyan))
-        Sim.gridlines.append(vp.curve(vp.vector(-Sim.GRID_MAX, 0, i), vp.vector(Sim.GRID_MAX, 0, i), radius=0.1, color=vp.color.cyan))
+        Sim.gridlines.append(
+            vp.curve(vp.vector(i, 0, -Sim.GRID_MAX), vp.vector(i, 0, Sim.GRID_MAX), radius=0.1, color=vp.color.cyan))
+        Sim.gridlines.append(
+            vp.curve(vp.vector(-Sim.GRID_MAX, 0, i), vp.vector(Sim.GRID_MAX, 0, i), radius=0.1, color=vp.color.cyan))
 
     # create an inner circle with all nodes (blue cylinder)
     pointer = vp.vector(Sim.geo_radius1, 0, 0)
@@ -276,24 +326,25 @@ def create_stuff():
             # pointer0 always points like x-axis
             # ------- pointers for angle ------
             start = vp.vector(end_point_3.x, end_point_3.y - 2, end_point_3.z)
-            end1 = start + vp.vector(Sim.POINTER0_RADIUS, 0,0)
+            end1 = start + vp.vector(Sim.POINTER0_RADIUS, 0, 0)
             end2 = start + vp.vector(Sim.POINTER1_RADIUS, 0, 0)
             Sim.pointer0[number] = vp.arrow(pos=start,
-                                            axis=end1-start,
+                                            axis=end1 - start,
                                             color=vp.color.red,
-                                            shaftwidth = 1.0,
-                                            #headwidth= 3
+                                            shaftwidth=1.0,
+                                            # headwidth= 3
                                             )
             Sim.pointer1[number] = vp.arrow(pos=start,
-                                            axis=end2-start,
+                                            axis=end2 - start,
                                             color=vp.color.orange,
                                             round=True,
                                             shaftwidth=0.5,
-                                            #headwidth = 0.5
+                                            # headwidth = 0.5
                                             )
             # ---- disc ----
-            vp.extrusion(path=[start, vp.vector(start.x, start.y+0.1, start.z)],
-                         shape=vp.shapes.circle(radius=Sim.GENERATOR_RADIUS+5,angle1=vp.radians(90), angle2=vp.radians(-90)))
+            vp.extrusion(path=[start, vp.vector(start.x, start.y + 0.1, start.z)],
+                         shape=vp.shapes.circle(radius=Sim.GENERATOR_RADIUS + 5, angle1=vp.radians(90),
+                                                angle2=vp.radians(-90)))
             # make automatic connection from generator to node
             vp.curve(vp.vector(end_point_1.x, 2, end_point_1.z),
                      vp.vector(end_point_3.x, 2, end_point_3.z),
@@ -311,13 +362,13 @@ def create_stuff():
     # create ALL cables
     for o_number, t_numbers in Data.cables_dict.items():
         # get the value
-        ov = vp.vector(Sim.nodes[o_number].pos.x,Sim.nodes[o_number].pos.y,Sim.nodes[o_number].pos.z)
+        ov = vp.vector(Sim.nodes[o_number].pos.x, Sim.nodes[o_number].pos.y, Sim.nodes[o_number].pos.z)
         for t in t_numbers:
             tv = vp.vector(Sim.nodes[t].pos.x, Sim.nodes[t].pos.y, Sim.nodes[t].pos.z)
             # base cable (invisible at start)
-            #Sim.cables[(o_number, t)] = vp.arrow(pos=ov, axis=tv-ov, color=vp.color.green, shaftwidth=1, visible=False)
+            # Sim.cables[(o_number, t)] = vp.arrow(pos=ov, axis=tv-ov, color=vp.color.green, shaftwidth=1, visible=False)
             # base cable lable
-            Sim.labels[f"cable {o_number} {t}"] = vp.label(pos=ov + vp.norm(tv-ov) * vp.mag(tv-ov)/2,
+            Sim.labels[f"cable {o_number} {t}"] = vp.label(pos=ov + vp.norm(tv - ov) * vp.mag(tv - ov) / 2,
                                                            text=f"c {o_number} {t}",
                                                            height=10,
                                                            color=vp.color.white,
@@ -325,23 +376,23 @@ def create_stuff():
             # little (moving) arrows
             Sim.mini_arrows[(o_number, t)] = []  # empty list
             start = vp.vector(ov.x, ov.y, ov.z)
-            end = start + vp.norm(tv-ov) * Sim.mini_arrow_length
-            #Sim.mini_arrows[(o_number,t)].append(vp.arrow(pos=vp.vector(start.x, start.y, start.z),
+            end = start + vp.norm(tv - ov) * Sim.mini_arrow_length
+            # Sim.mini_arrows[(o_number,t)].append(vp.arrow(pos=vp.vector(start.x, start.y, start.z),
             #                                              axis=end-start,
             #                                              color = vp.color.magenta))
-            #Sim.mini_arrows[(o_number, t)].append(vp.pyramid(pos=vp.vector(start.x, start.y, start.z),
+            # Sim.mini_arrows[(o_number, t)].append(vp.pyramid(pos=vp.vector(start.x, start.y, start.z),
             #                                                 axis = end-start,
             #                                                 color= vp.color.magenta,
             #                                                 length=Sim.mini_arrow_base1,
             #                                                 width=Sim.mini_arrow_base2,
             #                                                 ))
             mini_counter = 1
-            end += vp.norm(tv - ov) *   Sim.mini_arrow_distance
-            while (vp.mag(end-ov) + Sim.mini_arrow_length) < vp.mag(tv-ov):
+            end += vp.norm(tv - ov) * Sim.mini_arrow_distance
+            while (vp.mag(end - ov) + Sim.mini_arrow_length) < vp.mag(tv - ov):
                 start = vp.vector(end.x, end.y, end.z)
-                end += vp.norm(tv-ov) * Sim.mini_arrow_length
+                end += vp.norm(tv - ov) * Sim.mini_arrow_length
                 mini_counter += 1
-                #Sim.mini_arrows[(o_number, t)].append(vp.arrow(pos=vp.vector(start.x, start.y, start.z),
+                # Sim.mini_arrows[(o_number, t)].append(vp.arrow(pos=vp.vector(start.x, start.y, start.z),
                 #                                               axis=end - start,
                 #                                               color=vp.color.purple if mini_counter % 2 == 0 else vp.color.magenta,
                 #                                               shaft_width = 5,
@@ -352,7 +403,7 @@ def create_stuff():
                                                                  length=Sim.mini_arrow_base1,
                                                                  width=Sim.mini_arrow_base2,
                                                                  ))
-                end += vp.norm(tv - ov) *  Sim.mini_arrow_distance
+                end += vp.norm(tv - ov) * Sim.mini_arrow_distance
     # done with creating stuff - make ONE update for correcting y values
 
     update_stuff()
@@ -365,16 +416,16 @@ def update_stuff():
         g_angle = Data.df[col_name_angle(number)][Sim.i]
         cyl.axis = vp.vector(0, power * Sim.factor_generators, 0)
         # ------- pointers for angle --------
-        #Sim.pointer0[number].y = cyl.pos.y + cyl.axis.y + 1
-        #Sim.pointer1[number].y = cyl.pos.y + cyl.axis.y + 1
+        # Sim.pointer0[number].y = cyl.pos.y + cyl.axis.y + 1
+        # Sim.pointer1[number].y = cyl.pos.y + cyl.axis.y + 1
         # TODO: compare with angle from previous frame, only move when necessary
         # reset pointer1
         p0 = Sim.pointer0[number]
         p1_axis_vector = vp.vector(Sim.POINTER1_RADIUS, 0, 0)
-        p1_axis_vector = vp.rotate(p1_axis_vector, angle=vp.radians(g_angle), axis=vp.vector(0,1,0))
+        p1_axis_vector = vp.rotate(p1_axis_vector, angle=vp.radians(g_angle), axis=vp.vector(0, 1, 0))
         Sim.pointer1[number].axis = vp.vector(p1_axis_vector.x, p1_axis_vector.y, p1_axis_vector.z)
         Sim.labels[f"generator {number}"].text = f"g {number}: {power} MW, {g_angle}°"
-        #print(Sim.i, number, power)
+        # print(Sim.i, number, power)
     # -------- nodes --------
     for number, cyl in Sim.nodes.items():
         volt = Data.df[col_name_node(number)][Sim.i]
@@ -387,7 +438,7 @@ def update_stuff():
         for target in targetlist:
             # get power value from dataframe
             power = Data.df[col_name_cable(number, target)][Sim.i]
-            #print("power is:", power)
+            # print("power is:", power)
             Sim.labels[f"cable {number} {target}"].text = f"c {number}-->{target}: {power} W"
             if power < 0:
                 # make invisible
@@ -397,16 +448,18 @@ def update_stuff():
             ##for (o, t), arrow_list in Sim.mini_arrows.items():
             ##   for a in arrow_list:
             for glider in Sim.mini_arrows[(number, target)]:
-                #print("arrowlist:",arrowlist)
-                #print("miniarrows:", Sim.mini_arrows[(number, target)])
+                # print("arrowlist:",arrowlist)
+                # print("miniarrows:", Sim.mini_arrows[(number, target)])
                 glider.visible = v
                 glider.pos.y = power * Sim.factor_cables
+                #glider.length = power * Sim.factor_cables_x
+                glider.width = power * Sim.factor_cables_z
 
 
 def mainloop():
     simtime = 0
     time_since_framechange = 0
-    #frame_number = 0  # Sim.i
+    # frame_number = 0  # Sim.i
     while True:
         vp.rate(Sim.fps)
         simtime += Sim.dt
@@ -430,7 +483,7 @@ def mainloop():
                 for a in arrow_list:
                     start_pos = Sim.nodes[o].pos
                     end_pos = Sim.nodes[t].pos
-                    move = vp.norm(end_pos-start_pos) * Sim.mini_arrow_speed * Sim.dt
+                    move = vp.norm(end_pos - start_pos) * Sim.mini_arrow_speed * Sim.dt
                     a.pos += move
                     # check distance by ignoring y
                     exz = vp.vector(end_pos.x, 0, end_pos.z)
