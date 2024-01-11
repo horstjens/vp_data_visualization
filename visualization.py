@@ -3,10 +3,11 @@ import pandas as pd
 import random
 import vpython as vp
 
+VERSION = "0.18 "
+
 # TODO: für color überschriften im gui wtext machen damit hexcode farbe sofort angezeigt wird. evt. colors eine zeile rauf?
 # TODO Bruce: cylinders fix y axis, dynamic radius.
 # Flyers inside cable (change cable radius, make it transparent, flyers z-axis?)
-# fixme: besserer mini richtungswechsel (update)
 # TODO: better widget layout
 
 """moving a disc in a 2d plane using the mouse,
@@ -33,15 +34,11 @@ Voltage	pu	        0.9	   0.925	0.95	0.975	1.025	1.05	1.075	    1.1
 Power	% of MVA 	                                   60	  80	  100	  120
 Losses	%	                                            2	   3	    4	    5
 
-# wind, node: cylinder grows in y axis
-# cables: cylinder radius grows (xz axis)
-# cables: connect top y value of their connected cylinders. arrows between each subnode. 
+# DONE: wind, node: cylinder grows in y axis
+# DONE: cables: cylinder radius grows (xz axis)
+# TODO: cables: connect top y value of their connected cylinders. arrows between each subnode. 
 # losses: ? arrows up/down?
 
-
-
-# TODOS
-+color scale every "value" on a scale between green (normal) to red (upper limit) or blue (lower-limit)
 WONTFIX: +use different extruded shapes (Star etc.) instead of cylinders 
 
 """
@@ -80,7 +77,7 @@ class Sim:
     selected_object = None
     animation_running = False
     dragging = False
-    scene = vp.canvas(title='v 015 ',
+    scene = vp.canvas(title=f'version {VERSION}',
                       # caption="coordinates: ",
                       width=1200, height=800,
                       center=vp.vector(0, 0, 0),
@@ -174,8 +171,8 @@ class Sim:
     discs = {}
     generator_lines = {}
     sub_nodes = {}  # pink cylinders, draggable by mouse, only visible when in arrange mode
-    sub_cables = {}  # pink curve for cable, connecting the sub_nodes. will be cloned into shadows at simulation start
-    shadows = {}   # black shadows on y position 0, a clone from the sub-cable curve
+    sub_cables = {}  # pink curve for cable, connecting the sub_nodes. will be transformed into black shadows at simulation start
+    #shadows = {}   # black shadows on y position 0, a clone from the sub-cable curve
     labels = {}  # 2d text label
     letters = {}  # 3d billboard letters for nodes and generators
     # mini_arrows = {}  # flying along the path, only visible when in simulation mode
@@ -349,8 +346,10 @@ def func_toggle_generators_angle(b):
 
 
 def func_toggle_shadows(b):
-    for (i, j) in Sim.sub_cables:
-        pass
+    for curve in Sim.sub_cables.values():
+        for k in range(curve.npoints):
+            curve.modify(k, visible=b.checked)
+        #pass
         # if (i, j) in Sim.mini_shadows:
         #    for n, shadow in Sim.mini_shadows[(i, j)].items():
         #        shadow.visible = b.checked
@@ -522,28 +521,29 @@ def func_simulation(b):
     for (i, j), curve in Sim.sub_cables.items():
         pointlist = [p["pos"] for p in curve.slice(0, curve.npoints)]
         for k, point1 in enumerate(pointlist):
-            color = vp.color.gray(0.75) if k % 2 == 0 else vp.color.gray(0.25)  # TODO: better color cycling
+            color_ij = vp.color.gray(0.4) if k % 2 == 0 else vp.color.gray(0.2)  # TODO: better color cycling
+            color_ji = vp.color.gray(0.8) if k % 2 == 0 else vp.color.gray(0.6)  # TODO: better color cycling
             if k == (len(pointlist) - 1):
                 continue  # already at last point in pointlist
             point2 = pointlist[k + 1]
             diff = point2 - point1
 
             Sim.arrows_ij[(i, j, k)] = vp.arrow(pos=point1, axis=diff, round=True, shaftwidth=1, headwidth=2,
-                                                color=color, visible=True, pickable=False)
+                                                color=color_ij, visible=True, pickable=False)
             Sim.arrows_ji[(i, j, k)] = vp.arrow(pos=point2, axis=-diff, round=True, shaftwidth=1, headwidth=2,
-                                                color=color, visible=False, pickable=False)
-    # make the shadows like sub-cables, but lying on the floor.
+                                                color=color_ji, visible=False, pickable=False)
+    # transform the sub-cables into shadows (black, on floor)
     for (i,j), snake in Sim.sub_cables.items():
     #    # TODO: find out why a curve object cannot be cloned or improve official documentation
-        pointlist = snake.slice(0, snake.npoints)  # pointlist is a list of dicts
-        pointlist2 = []
-        for p in pointlist:
-            p2 = p.copy()
-            p2["color"]=vp.color.black       # change the pink color of each point to black
-            pointlist2.append(p2)
+        #pointlist = snake.slice(0, snake.npoints)  # pointlist is a list of dicts
+        #pointlist2 = []
+        for k in range(snake.npoints):
+            snake.modify(k, color=vp.color.black)
+            #p2["color"]=vp.color.black       # change the pink color of each point to black
+            #pointlist2.append(p2)
         #print("pointlist is:", pointlist)
 
-        Sim.shadows[(i,j)] = vp.curve(pos=pointlist2, color=vp.color.black, pickable=False,visible=True)
+        #Sim.shadows[(i,j)] = vp.curve(pos=pointlist2, color=vp.color.black, pickable=False,visible=True)
 
 
 
@@ -1327,9 +1327,14 @@ def create_stuff():
                                         #         'turn': -1,
                                         #         },
                                         )
-        Sim.letters[f"node {number}"] = vp.text(text=f"N{number}", color=vp.color.black,
+        #Sim.letters[f"node {number}"] = vp.text(text=f"N{number}", color=vp.color.black,
+        #                                        pos=vp.vector(end_point_1.x, 3, end_point_1.z),
+        #                                        billboard=True, emissive=True, pickable=False, align="center")
+        Sim.letters[f"node {number}"] = vp.label(text=f"N{number}", color=vp.color.black,
                                                 pos=vp.vector(end_point_1.x, 3, end_point_1.z),
-                                                billboard=True, emissive=True, pickable=False, align="center")
+                                                 opacity=0.1, box=False,
+                                                #billboard=True, emissive=True,
+                                                 pickable=False, align="center")
 
         Sim.nodes[number].what = "node"
         Sim.nodes[number].number = number
@@ -1359,7 +1364,9 @@ def create_stuff():
             Sim.generators[number].number = number
             Sim.letters[f"generator {number}"] = vp.text(text=f"G{number}", color=vp.color.black,
                                                          pos=vp.vector(end_point_3.x, 4, end_point_3.z),
-                                                         billboard=True, emissive=True, pickable=False, align="center")
+                                                         opactiy=0.1, border=False,
+                                                         #billboard=True, emissive=True,
+                                                         pickable=False, align="center")
 
             Sim.labels[f"generator {number}"] = vp.label(pos=vp.vector(end_point_4.x, 0, end_point_4.z),
                                                          text=f"g {number}",
@@ -1620,8 +1627,8 @@ def update_stuff():
     for number, cyl in Sim.nodes.items():
         try:
             volt = Data.df[col_name_node(number)][Sim.i]
-        except IndexError:
-            print(f"IndexError: could not found Volt in line {Sim.i} column {Data.df[col_name_node(number)]}")
+        except KeyError:
+            print(f"KeyError: could not found Volt in line {Sim.i} column {Data.df[col_name_node(number)]}")
             continue
         cyl.axis = vp.vector(0, volt * Sim.factor["nodes_h"] + Sim.base["nodes_h"], 0)
         cyl.radius = volt * Sim.factor["nodes_r"] + Sim.base["nodes_r"]
@@ -1631,14 +1638,24 @@ def update_stuff():
         Sim.letters[f"node {number}"].pos.y = cyl.axis.y + 1
         # --- sloped cables ? ----
         if Sim.sloped_cables:
-            for (i,j), curve in Sim.sub_cables.items():
+            #for (i,j), curve in Sim.sub_cables.items():
+            for (i,j) in Sim.cables:
                 yi = Sim.nodes[i].axis.y
                 yj = Sim.nodes[j].axis.y
-                n = Sim.number_of_sub_cables
+                n = Sim.number_of_sub_cables +1
                 delta = (yj - yi) / n
-                for k in range(curve.npoints):
-                    oldpos = curve.point(k)["pos"]
-                    curve.modify(k, pos=vp.vector(oldpos.x, yi+delta*k ,oldpos.z))
+                ###print(i,j, delta)
+                #for k in range(curve.npoints-1):
+                # TODO: flexible number of sub-cables?
+                for k in range(n-1):
+                    y1 = yi + k * delta
+                    y2 = yi + (k+1) * delta
+                    Sim.arrows_ij[(i,j,k)].pos.y = y1
+                    Sim.arrows_ij[(i,j,k)].axis.y = y2 - y1
+                    Sim.arrows_ji[(i, j, k)].pos.y = y1
+                    Sim.arrows_ji[(i, j, k)].axis.y = y2 - y1
+                #    oldpos = curve.point(k)["pos"]
+                #    curve.modify(k, pos=vp.vector(oldpos.x, yi+delta*k ,oldpos.z))
         else:
             # all curves are at y zero ?
             pass
@@ -1648,9 +1665,9 @@ def update_stuff():
         try:
             power = Data.df[col_name_power(number)][Sim.i]
             g_angle = Data.df[col_name_angle(number)][Sim.i]
-        except IndexError:
+        except KeyError:
             print(
-                f"IndexError: could not find power / angle value in line {Sim.i} for columns {col_name_power(number)} / {col_name_angle(number)}")
+                f"KeyError: could not find power / angle value in line {Sim.i} for columns {col_name_power(number)} / {col_name_angle(number)}")
             continue
         cyl.axis = vp.vector(0, power * Sim.factor["generators_h"] + Sim.base["generators_h"], 0)
         cyl.radius = power * Sim.factor["generators_r"] + Sim.base["generators_r"]
@@ -1676,9 +1693,9 @@ def update_stuff():
             try:
                 power1 = Data.df[col_name_cable(number, target)][Sim.i]
                 power2 = Data.df[col_name_cable(target, number)][Sim.i]
-            except IndexError:
+            except KeyError:
                 print(
-                    f"IndexError: could not fine power1, power2 value(s) in line {Sim.i} for columns {col_name_cable(number, target)}, {col_name_cable(target, number)}")
+                    f"KeyError: could not fine power1, power2 value(s) in line {Sim.i} for columns {col_name_cable(number, target)}, {col_name_cable(target, number)}")
                 continue
             loss = abs(power1 + power2)
             numtar = all((power1 > 0, power2 < 0))  # True if flow from number to target
@@ -1747,17 +1764,6 @@ def main():
             Sim.gui["frameslider"].value = Sim.i
             # get the data from df (for y values)
             update_stuff()
-        # --- gliders ----
-        # for (i, j), gliderdict in Sim.mini_arrows.items():
-        #    for n, glider in gliderdict.items():
-        #        glider.move(Sim.dt)
-        #        shadow = Sim.mini_shadows[(i, j)][n]
-        #        shadow.pos.x = glider.pos.x
-        #        shadow.pos.z = glider.pos.z
-        #        loss = Sim.mini_losses[(i, j)][n]
-        #        loss.pos.x = glider.pos.x
-        #        loss.pos.z = glider.pos.z
-        #        # loss.pos.y = glider.pos.y
 
 
 if __name__ == "__main__":
