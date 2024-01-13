@@ -1274,7 +1274,7 @@ def mouse_move():
         o.pos.z = max(-Sim.grid_max / 2, o.pos.z)
         o.pos.z = min(Sim.grid_max / 2, o.pos.z)
     #match o.what:
-    if what ==  "node":
+    if o.what ==  "node":
             Sim.labels[f"node {o.number}"].pos = o.pos
             Sim.letters[f"node {o.number}"].pos.x = o.pos.x
             Sim.letters[f"node {o.number}"].pos.z = o.pos.z
@@ -1309,7 +1309,7 @@ def mouse_move():
             # exist connected generator?
             if o.number in Sim.generator_lines.keys():
                 Sim.generator_lines[o.number].modify(0, pos=o.pos)
-    elif what == "generator":
+    elif o.what == "generator":
             Sim.labels[f"generator {o.number}"].pos = o.pos
             Sim.letters[f"generator {o.number}"].pos.x = o.pos.x
             Sim.letters[f"generator {o.number}"].pos.z = o.pos.z
@@ -1319,13 +1319,13 @@ def mouse_move():
             Sim.discs[o.number].pos = o.pos
             # update generator_line
             Sim.generator_lines[o.number].modify(1, pos=o.pos)
-    elif what == "subnode":
+    elif o.what == "subnode":
             # change only the attached sub-cables
             i, j, k = o.number
             Sim.sub_cables[i, j].modify(k, pos=o.pos)
             if k == int(Sim.number_of_sub_cables / 2):
                 Sim.labels[f"cable {i}-{j}"].pos = o.pos
-    else :
+    else:
             pass  # something else got dragged
             # elif o.what == "subdisc":
             #    i,j,k = o.number
