@@ -5,7 +5,6 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-
 VERSION = "0.18 "
 
 # TODO: für color überschriften im gui wtext machen damit hexcode farbe sofort angezeigt wird. evt. colors eine zeile rauf?
@@ -29,14 +28,26 @@ cables connect nodes with each powers
        > power from/to
 
 color coding:       bad     crit     toler   ok     ok    toler    crit      bad
-Angle	deg	        -180	-170	-160	-150	  150	 160	  170	  180
-Voltage	pu	        0.9	   0.925	0.95	0.975	1.025	1.05	1.075	    1.1
-Power	% of MVA 	                                   60	  80	  100	  120
-Losses	%	                                            2	   3	    4	    5
+Angle	deg	        -180	-170	-160	-150	  150	 160	  170	  180   (gen.) 
+Voltage	pu	        0.9	   0.925	0.95	0.975	1.025	1.05	1.075	    1.1 (nodes)
+Circuits% of MVA 	                                   60	  80	  100	  120   (cables)
+Generators of MVA                                      60	  80	  100	  120   (generators)
+Losses	%	                                            2	   3	    4	    5 (low prio)
+
+loading = % of MVA -> its for color coding the cables (* 100)
 
 # MVA calculation:
 % loading = sqrt (P^2 + Q^2) / MVArating
 P and Q are the active and reactive flow in the circuit 
+Q = zero
+P is power from csv table (power of generator, 
+
+active power ... P
+reactive power ... Q
+
+POWER CKT ... is power from Cable  (use only the bigger one)
+Power (without CKT) ... power from Generator
+
 
 see MVA tables: 
 mva_bus.csv
@@ -577,7 +588,7 @@ def func_simulation(b):
 
             Sim.arrows_ij[(i, j, k)] = vp.arrow(pos=point1, axis=diff, round=True, shaftwidth=1, headwidth=2,
                                                 color=color_ij, visible=True, pickable=False)
-            Sim.arrows_ji[(i, j, k)] = vp.arrow(pos=point2, axis=-diff, round=False, shaftwidth=1, headwidth=2,
+            Sim.arrows_ji[(i, j, k)] = vp.arrow(pos=point2, axis=-diff, round=True, shaftwidth=1, headwidth=2,
                                                 color=color_ji, visible=False, pickable=False)
     # transform the sub-cables into shadows (black, on floor)
     for (i,j), snake in Sim.sub_cables.items():
@@ -663,11 +674,12 @@ def load_layout():
         if line.startswith("#"):
             mode = line[1:]
             continue
-        match mode:
-            case None:
+        #match mode:
+        if mode is None:
+            #case None:
                 continue
 
-            case "curves":
+        elif mode == "curves":
                 i, j, k, x, y, z = [float(word) for word in line.split(" ")]
                 i, j, k = int(i), int(j), int(k)
                 pointpos = vp.vector(x, y, z)
@@ -677,7 +689,7 @@ def load_layout():
                 if k == int(Sim.number_of_sub_cables / 2):
                     Sim.labels[f"cable {i}-{j}"].pos = pointpos
 
-            case "nodes":
+        elif mode == "nodes":
                 number, x, y, z = [float(word) for word in line.split(" ")]
                 number = int(number)
                 npos = vp.vector(x, y, z)
@@ -692,7 +704,7 @@ def load_layout():
                     if j == number:
                         curve.modify(1, npos)
 
-            case "generators":
+        elif mode == "generators":
                 number, x, y, z = [float(word) for word in line.split(" ")]
                 number = int(number)
                 gpos = vp.vector(x, y, z)
@@ -705,7 +717,7 @@ def load_layout():
                 Sim.generator_lines[number].modify(1, pos=gpos)  # 1 is the generator, 0 is the node
                 # Sim.generator_lines[number].modify(0, pos=Sim.nodes[number].pos)
 
-            case _:
+        else :
                 print("unhandled value for mode in layout file:", mode)
     print("loading of layout data was sucessfull")
 
@@ -1261,8 +1273,8 @@ def mouse_move():
     if not (-Sim.grid_max / 2 <= Sim.scene.mouse.pos.z <= Sim.grid_max / 2):
         o.pos.z = max(-Sim.grid_max / 2, o.pos.z)
         o.pos.z = min(Sim.grid_max / 2, o.pos.z)
-    match o.what:
-        case "node":
+    #match o.what:
+    if what ==  "node":
             Sim.labels[f"node {o.number}"].pos = o.pos
             Sim.letters[f"node {o.number}"].pos.x = o.pos.x
             Sim.letters[f"node {o.number}"].pos.z = o.pos.z
@@ -1297,7 +1309,7 @@ def mouse_move():
             # exist connected generator?
             if o.number in Sim.generator_lines.keys():
                 Sim.generator_lines[o.number].modify(0, pos=o.pos)
-        case "generator":
+    elif what == "generator":
             Sim.labels[f"generator {o.number}"].pos = o.pos
             Sim.letters[f"generator {o.number}"].pos.x = o.pos.x
             Sim.letters[f"generator {o.number}"].pos.z = o.pos.z
@@ -1307,13 +1319,13 @@ def mouse_move():
             Sim.discs[o.number].pos = o.pos
             # update generator_line
             Sim.generator_lines[o.number].modify(1, pos=o.pos)
-        case "subnode":
+    elif what == "subnode":
             # change only the attached sub-cables
             i, j, k = o.number
             Sim.sub_cables[i, j].modify(k, pos=o.pos)
             if k == int(Sim.number_of_sub_cables / 2):
                 Sim.labels[f"cable {i}-{j}"].pos = o.pos
-        case _:
+    else :
             pass  # something else got dragged
             # elif o.what == "subdisc":
             #    i,j,k = o.number
