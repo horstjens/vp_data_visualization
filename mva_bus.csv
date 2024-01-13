@@ -1,4 +1,4 @@
-"from_bus", "to_bus", "mva"
+from_bus,to_bus,mva
 1,2,600
 1,39,1000
 2,3,500
