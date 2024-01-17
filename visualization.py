@@ -7,10 +7,6 @@ import vpython as vp   # install with pip install vpython
 
 VERSION = "0.18 "
 
-# TODO: für color überschriften im gui wtext machen damit hexcode farbe sofort angezeigt wird. evt. colors eine zeile rauf?
-# TODO Bruce: cylinders fix y axis, dynamic radius.
-# Flyers inside cable (change cable radius, make it transparent, flyers z-axis?)
-# TODO: better widget layout
 
 """
 improved Prototype
@@ -68,6 +64,7 @@ class Data:
     """Data contains variables taken from the excel/csv file"""
     # create a pandas dataframe from csv
     df = pd.read_csv("raw_data.csv")
+
     # take some interesting columns (called 'series' in pandas)
     nodes_min = None
     nodes_max = None
@@ -92,6 +89,7 @@ class Data:
     # read mva data from csv
     mva_generators = {}
     mva_cables = {}
+    nodes_to_generators = {}
 
 class Sim:
     mode = "arrange"
@@ -211,7 +209,7 @@ def read_mva_values():
     with open("mva_generator.csv") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            print(row)
+            #print(row)
             Data.mva_generators[int(row["generator_number"])] = int(row["mva"])
 
     print("loaded values of mva_generators:", Data.mva_generators)
@@ -224,6 +222,12 @@ def read_mva_values():
             Data.mva_cables[(fb, tb)] = mva
     print("loaded values of mva_cables:", Data.mva_cables)
 
+def read_nodes_to_generators():
+    with open("mva_nodes_generators.csv") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            Data.nodes_to_generators[int(row["node_number"])] = int(row["generator_number"])
+    print("loaded values of nodes_to_generators:", Data.nodes_to_generators)
 
 def col_name_angle(generator_number):
     return f"ANGL {generator_number}[{generator_number} 1.0000]1"
@@ -768,7 +772,7 @@ def func_color_crit_high(b):
     Sim.colordict["crit_high"] = hexcode_to_vector(b.text)
     update_stuff()
 
-
+# ------ nodes ------------
 def func_color_crit_low_nodes(b):
     Sim.colors["crit_low_nodes"] = b.number
     update_stuff()
@@ -808,26 +812,41 @@ def func_color_crit_high_nodes(b):
     Sim.colors["crit_high_nodes"] = b.number
     update_stuff()
 
+# ------- generators ----------
 
-def func_color_too_low_generators(b):
-    print(b.number)
+#def func_color_crit_low_generators(b):
+#    Sim.colors["crit_low_generators"] = b.number
+#def func_color_too_low_generators(b):
+#    print(b.number)
+#def func_color_low_generators(b):
+#    print(b.number)
 
 
-def func_color_low_generators(b):
-    print(b.number)
+def func_color_crit_low_generators(b):
+    Sim.colors["crit_low_generators"] = b.number
+    Sim.colors["too_low_generators"] = b.number
+    Sim.colors["low_generators"] = b.numbers
+    Sim.colors["good_low_generators"] = b.numbers
+    update_stuff()
 
 
-def func_color_generators(b):
-    print(b.number)
-
+def func_color_good_high_generators(b):
+    Sim.colors["good_high_generators"] = b.number
+    update_stuff()
 
 def func_color_high_generators(b):
-    print(b.number)
-
+    Sim.colors["high_generators"] = b.number
+    update_stuff()
 
 def func_color_too_high_generators(b):
-    print(b.number)
+    Sim.colors["too_high_generators"] = b.number
+    update_stuff()
 
+def func_color_crit_high_generators(b):
+    Sim.colors["crit_high_generators"] = b.number
+    update_stuff()
+
+# ------- generator angle -------
 
 def func_color_crit_low_generators_angle(b):
     Sim.colors["crit_low_generators_angle"] = b.number
@@ -1023,24 +1042,32 @@ def create_widgets():
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["min_max_nodes"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>generators:  |  </code>")
-    Sim.gui["color_too_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_generators,
-                                                    width=50,
-                                                    type="numeric", text="-10.0")  # TODO : get default value
+    Sim.scene.append_to_caption("<code>generators:  | </code>")
+    Sim.gui["color_crit_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_low_generators,
+                                                     width=50,
+                                                     type="numeric", text="-99")
+    #Sim.gui["color_too_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_generators,
+    #                                                width=50,
+    #                                                type="numeric", text="-10.0")  # TODO : get default value
+    #Sim.scene.append_to_caption("<code> | </code>")
+    #Sim.gui["color_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_generators, width=50,
+    #                                            type="numeric", text="-5.0")  # TODO : get default value
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_generators, width=50,
-                                                type="numeric", text="-5.0")  # TODO : get default value
-    Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_generators, width=50,
-                                            type="numeric", text="0.0")  # TODO : get value
+
+    Sim.gui["color_good_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_good_high_generators, width=50,
+                                            type="numeric", text="60")  #
     Sim.scene.append_to_caption("<code> | </code>")
     Sim.gui["color_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_generators,
                                                  width=50,
-                                                 type="numeric", text="5.0")  # TODO : get value
+                                                 type="numeric", text="80")
     Sim.scene.append_to_caption("<code> | </code>")
     Sim.gui["color_too_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_generators,
                                                      width=50,
-                                                     type="numeric", text="10.0")  # TODO : get value
+                                                     type="numeric", text="100")  #
+    Sim.scene.append_to_caption("<code>| </code>")
+    Sim.gui["color_crit_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_high_generators,
+                                                      width=50,
+                                                      type="numeric", text="120")
     Sim.scene.append_to_caption("<code>| </code>")
     Sim.gui["min_max_generators"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
@@ -1539,6 +1566,7 @@ def get_Data_min_max():
     # Sim.gui["color_high_nodes"].text = f"{Data.nodes_max:.2f}"
     # Sim.gui["color_nodes"].text = f"{Data.nodes_min + (Data.nodes_max - Data.nodes_min) / 2:.2f}"
     # hardcode: 0.9	   0.925	0.95	0.975	1.025	1.05	1.075	    1.1
+    # see docstring at top
     # --- for nodes ----
     Sim.gui["color_crit_low_nodes"].text = f"{0.9:.2f}"
     Sim.colors["crit_low_nodes"] = 0.9
@@ -1574,8 +1602,19 @@ def get_Data_min_max():
     Sim.colors["too_high_generators_angle"] = 170
     Sim.gui["color_crit_high_generators_angle"].text = "180"
     Sim.colors["crit_high_generators_angle"] = 180
-    # -----
-
+    # ----- generators: 60 ,  80 ,  100, 120
+    Sim.colors["crit_low_generators"] = 0
+    Sim.colors["too_low_generators"] = 0
+    Sim.colors["low_generators"] = 0
+    Sim.colors["good_low_generators"] = 0
+    Sim.gui["color_good_high_generators"] = 60
+    Sim.colors["good_high_generators"] = 60
+    Sim.gui["color_high_generators"] = 80
+    Sim.colors["high_generators"] = 80
+    Sim.gui["color_too_high_generators"] = 100
+    Sim.colors["too_high_generators"] = 100
+    Sim.gui["color_crit_high_generators"] = 120
+    Sim.colors["crit_high_generators"] = 120
     # --- min max ----
     Sim.gui["min_max_nodes"].text = f"<code>{Data.nodes_min:.2f} / {Data.nodes_max:.2f}</code>"
     # generators power
@@ -1591,11 +1630,11 @@ def get_Data_min_max():
             Data.generators_max = ma
         elif ma > Data.generators_max:
             Data.generators_max = ma
-    Sim.gui["color_too_low_generators"].text = f"{Data.generators_min - 1:.2f}"
-    Sim.gui["color_too_high_generators"].text = f"{Data.generators_max + 1:.2f}"
-    Sim.gui["color_low_generators"].text = f"{Data.generators_min:.2f}"
-    Sim.gui["color_high_generators"].text = f"{Data.generators_max:.2f}"
-    Sim.gui["color_generators"].text = f"{Data.generators_min + (Data.generators_max - Data.generators_min) / 2:.2f}"
+    #Sim.gui["color_too_low_generators"].text = f"{Data.generators_min - 1:.2f}"
+    #Sim.gui["color_too_high_generators"].text = f"{Data.generators_max + 1:.2f}"
+    #Sim.gui["color_low_generators"].text = f"{Data.generators_min:.2f}"
+    #Sim.gui["color_high_generators"].text = f"{Data.generators_max:.2f}"
+    #Sim.gui["color_generators"].text = f"{Data.generators_min + (Data.generators_max - Data.generators_min) / 2:.2f}"
     Sim.gui["min_max_generators"].text = f"<code>{Data.generators_min:.2f} / {Data.generators_max:.2f}</code>"
     # generators angle
     for number in Sim.generators:
@@ -1758,6 +1797,20 @@ def update_stuff():
         Sim.labels[f"generator {number}"].text = f"g {number}: {power} MW, {g_angle}°"
         Sim.letters[f"generator {number}"].pos.y = cyl.axis.y + 1
         # print(Sim.i, number, power)
+        # color for generator, calculate % mva value
+        """
+        loading = % of MVA -> its for color coding the cables (* 100)
+        # MVA calculation:
+        % loading = sqrt (P^2 + Q^2) / MVArating
+        """
+        p = power
+        q = 0
+        mva_node_number = Data.nodes_to_generators[number]
+        loading = ((p**2 + q**2)**0.5)/Data.mva_generators[mva_node_number] * 100
+
+        #print(f"loading % of Mva for generator {number}: p = {power}, q=0, mva_number= {mva_node_number} mva= {Data.mva_generators[mva_node_number]} loading is: {loading}")
+        # assume that loading must be multiplied by 100 again...
+        cyl.color = update_color(loading*100, "generators")
 
     # ------ cables -----
     #
@@ -1860,6 +1913,7 @@ def main():
 if __name__ == "__main__":
     create_data()
     read_mva_values()
+    read_nodes_to_generators()
     create_stuff()
     load_layout()
     create_widgets()
