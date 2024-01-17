@@ -825,8 +825,8 @@ def func_color_crit_high_nodes(b):
 def func_color_crit_low_generators(b):
     Sim.colors["crit_low_generators"] = b.number
     Sim.colors["too_low_generators"] = b.number
-    Sim.colors["low_generators"] = b.numbers
-    Sim.colors["good_low_generators"] = b.numbers
+    Sim.colors["low_generators"] = b.number
+    Sim.colors["good_low_generators"] = b.number
     update_stuff()
 
 
@@ -886,27 +886,33 @@ def func_color_too_high_generators_angle(b):
 def func_color_crit_high_generators_angle(b):
     Sim.colors["crit_high_generators_angle"] = b.number
     update_stuff()
+# ---- cables ----
 
+def func_color_crit_low_cables(b):
+    Sim.colors["crit_low_cables"] = b.number
+    Sim.colors["too_low_cables"] = b.number
+    Sim.colors["low_cables"] = b.number
+    Sim.colors["good_low_cables"] = b.number
+    update_stuff()
 
-def func_color_too_low_cables(b):
-    print(b.number)
-
-
-def func_color_low_cables(b):
-    print(b.number)
-
-
-def func_color_cables(b):
-    print(b.number)
-
+def func_color_good_high_cables(b):
+    Sim.colors["good_high_cables"] = b.number
+    update_stuff()
 
 def func_color_high_cables(b):
-    print(b.number)
-
+    Sim.colors["high_cables"] = b.number
+    update_stuff()
 
 def func_color_too_high_cables(b):
-    print(b.number)
+    Sim.colors["too_high_cables"] = b.number
+    update_stuff()
 
+def func_color_crit_high_cables(b):
+    Sim.colors["crit_high_cables"] = b.number
+    update_stuff()
+
+
+# --------- losses ------------
 
 def func_color_too_low_losses(b):
     print(b.number)
@@ -1111,21 +1117,28 @@ def create_widgets():
     Sim.scene.append_to_caption("\n")
 
     Sim.scene.append_to_caption("<code>cables:      |  </code>")
-    Sim.gui["color_too_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_cables, width=50,
-                                                type="numeric", text="-10.0")  # TODO : get default value
+    Sim.gui["color_crit_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_low_cables,
+                                                     width=50,
+                                                     type="numeric", text="0")
+
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_cables, width=50,
-                                            type="numeric", text="-5.0")  # TODO : get default value
+
+    Sim.gui["color_good_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor,
+                                                      bind=func_color_good_high_cables, width=50,
+                                                      type="numeric", text="60")  #
     Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_cables, width=50,
-                                        type="numeric", text="0.0")  # TODO : get value
-    Sim.scene.append_to_caption("<code> | </code>")
-    Sim.gui["color_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_cables, width=50,
-                                             type="numeric", text="5.0")  # TODO : get value
+    Sim.gui["color_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_cables,
+                                                 width=50,
+                                                 type="numeric", text="80")
     Sim.scene.append_to_caption("<code> | </code>")
     Sim.gui["color_too_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_cables,
-                                                 width=50,
-                                                 type="numeric", text="10.0")  # TODO : get value
+                                                     width=50,
+                                                     type="numeric", text="100")  #
+    Sim.scene.append_to_caption("<code>| </code>")
+    Sim.gui["color_crit_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor,
+                                                      bind=func_color_crit_high_cables,
+                                                      width=50,
+                                                      type="numeric", text="120")
     Sim.scene.append_to_caption("<code>| </code>")
     Sim.gui["min_max_cables"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
@@ -1615,6 +1628,19 @@ def get_Data_min_max():
     Sim.colors["too_high_generators"] = 100
     Sim.gui["color_crit_high_generators"] = 120
     Sim.colors["crit_high_generators"] = 120
+    # -------- cables: 60, 80, 100, 120
+    Sim.colors["crit_low_cables"] = 0
+    Sim.colors["too_low_cables"] = 0
+    Sim.colors["low_cables"] = 0
+    Sim.colors["good_low_cables"] = 0
+    Sim.gui["color_good_high_cables"] = 60
+    Sim.colors["good_high_cables"] = 60
+    Sim.gui["color_high_cables"] = 80
+    Sim.colors["high_cables"] = 80
+    Sim.gui["color_too_high_cables"] = 100
+    Sim.colors["too_high_cables"] = 100
+    Sim.gui["color_crit_high_cables"] = 120
+    Sim.colors["crit_high_cables"] = 120
     # --- min max ----
     Sim.gui["min_max_nodes"].text = f"<code>{Data.nodes_min:.2f} / {Data.nodes_max:.2f}</code>"
     # generators power
@@ -1656,7 +1682,7 @@ def get_Data_min_max():
     # Sim.gui["color_generators_angle"].text = f"{Data.generators_angle_min + (Data.generators_angle_max - Data.generators_angle_min) / 2:.2f}"
     Sim.gui[
         "min_max_generators_angle"].text = f"<code>{Data.generators_angle_min:.2f} / {Data.generators_angle_max:.2f}</code>"
-
+    # TODO: cables min_max
 
 def update_color(value, what="nodes"):
     """to calculate and return a conditional color based on a value. Looks into Sim.colors and Sim.colordict"""
@@ -1835,11 +1861,8 @@ def update_stuff():
             else:
                 print("could not find mva_rating (cables) for", number, target)
                 continue
-            P = power1
-            Q = power2
-            loading = ((power1**2 + power2**2)**0.5)/mva_rating
-            #print("loading:", loading)
-            # TODO: make color using loading value (mva)
+
+
 
             numtar = all((power1 > 0, power2 < 0))  # True if flow from number to target
             power = power1 if numtar else power2
@@ -1853,6 +1876,13 @@ def update_stuff():
 
                     if Sim.gui["box_cables"].checked:
                         # make visible/invisible depending on power value
+                        # get mva value and color value
+                        p = power
+                        q = 0
+                        loading = (p**2 + q**2)**0.5 / mva_rating * 100
+                        print(f"loading calc. for cable {number} {target}: p={power} q=0 mva_rating={mva_rating} loading =  {loading}")
+
+                        #mva: {(1, 2): 600, (1, 39): 1000, (2, 3): 500, (2, 25): 500, (2, 30): 900, (3, 4): 500, (3, 18): 500, (4, 5): 600, (4, 14): 500, (5, 6): 1200, (5, 8): 900, (6, 7): 900, (6, 11): 480, (6, 31): 1800, (7, 8): 900, (8, 9): 900, (9, 39): 900, (10, 11): 600, (10, 13): 600, (10, 32): 900, (12, 11): 500, (12, 13): 500, (13, 14): 600, (14, 15): 600, (15, 16): 600, (16, 17): 600, (16, 19): 600, (16, 21): 600, (16, 24): 600, (17, 18): 600, (17, 27): 600, (19, 20): 900, (19, 33): 900, (20, 34): 900, (21, 22): 900, (22, 23): 600, (22, 35): 900, (23, 24): 600, (23, 36): 900, (25, 26): 600, (25, 37): 900, (26, 27): 600, (26, 28): 600, (26, 29): 600, (28, 29): 600, (29, 38): 1200}
                         if numtar:
                             Sim.arrows_ij[(number, target, k)].visible = True
                             Sim.arrows_ji[(number, target, k)].visible = False
@@ -1860,6 +1890,8 @@ def update_stuff():
                                 "cables_r"]
                             Sim.arrows_ij[(number, target, k)].headwidth = power * Sim.factor["cables_r"] + Sim.base[
                                 "cables_r"] + 1
+                            # dynamic color?
+                            Sim.arrows_ij[(number, target, k)].color = update_color(loading, "cables")
                         else:
                             Sim.arrows_ij[(number, target, k)].visible = False
                             Sim.arrows_ji[(number, target, k)].visible = True
@@ -1867,6 +1899,7 @@ def update_stuff():
                                 "cables_r"]
                             Sim.arrows_ji[(number, target, k)].headwidth = power * Sim.factor["cables_r"] + Sim.base[
                                 "cables_r"] + 1
+                            Sim.arrows_ji[(number, target, k)].color = update_color(loading , "cables")
                     else:
                         # make all invisible
                         for a in Sim.arrows_ij.values():
