@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.19 "
+VERSION = "0.19.1 "
 
 
 """
@@ -374,8 +374,43 @@ def func_restart(b):
     Sim.gui["label_frame"].text = str(0)
 
 
+def func_step_back(b):
+    """one step back in time"""
+    Sim.animation_running = False
+    Sim.gui["play"].text = "Play >"
+    if Sim.i > 0:
+        Sim.i -= 1
+        Sim.gui["frameslider"].value = Sim.i
+        Sim.gui["label_frame"].text = str(Sim.i)
+        print("now at Step", Sim.i)
+        update_stuff()
+    else:
+        print("Already at first step")
+
+
+def func_step_forward(b):
+    """one step forward in time"""
+    """one step back in time"""
+    Sim.animation_running = False
+    Sim.gui["play"].text = "Play >"
+    if Sim.i < len(Data.df):
+        Sim.i += 1
+        Sim.gui["frameslider"].value = Sim.i
+        Sim.gui["label_frame"].text = str(Sim.i )
+        print("now at Step", Sim.i)
+        update_stuff()
+    else:
+        print("already at first step")
+
+
 def func_end(b):
-    print("end was pressed", b.text)
+    """go to last step"""
+    # print("start was pressed", b.text)
+    Sim.animation_running = False
+    Sim.gui["play"].text = "Play >"
+    Sim.i = len(Data.df)
+    Sim.gui["frameslider"].value = len(Data.df)
+    Sim.gui["label_frame"].text = str(len(Data.df))
 
 
 def func_play(b):
@@ -597,6 +632,21 @@ def func_factor_losses(b):
 #         for o in d.values():
 #             o.visible = True
 
+def func_animation_duration(b):
+    """set new animation duration from gui"""
+    # animation_duration = 20  # seconds
+    # frame_duration = animation_duration / len(Data.df)
+    # sanity check
+    new_number = b.number
+    if new_number <= 0:
+        print("new number for animation duration must be positive")
+        return
+    Sim.animation_duration = new_number
+    Sim.frame_duration = new_number / len(Data.df)
+    print("animation duration is now", new_number)
+    if Sim.mode == "simulation":
+        update_stuff()
+
 
 def func_simulation(b):
     save_layout()
@@ -606,7 +656,11 @@ def func_simulation(b):
     # Sim.gui["arrange"].disabled = False
     Sim.gui["simulation"].disabled = True
     Sim.gui["restart"].disabled = False
+    Sim.gui["end"].disabled = False
     Sim.gui["play"].disabled = False
+    Sim.gui["step_back"].disabled = False
+    Sim.gui["step_forward"].disabled = False
+    Sim.gui["end"].disabled=False
     Sim.gui["frameslider"].disabled = False
     # update gui so that cables can be toggled
     Sim.gui["box_cables"].disabled = False
@@ -1130,7 +1184,10 @@ def create_widgets():
     Sim.gui["simulation"] = vp.button(bind=func_simulation, text="start simulation", pos=Sim.scene.title_anchor,
                                       disabled=False)
     Sim.gui["restart"] = vp.button(bind=func_restart, text="|<", pos=Sim.scene.title_anchor, disabled=True)
+    Sim.gui["step_back"] = vp.button(bind=func_step_back, text="<", pos=Sim.scene.title_anchor, disabled=True)
     Sim.gui["play"] = vp.button(bind=func_play, text="play >", pos=Sim.scene.title_anchor, disabled=True)
+    Sim.gui["step_forward"] = vp.button(bind=func_step_forward, text=">", pos=Sim.scene.title_anchor, disabled=True)
+    Sim.gui["end"] = vp.button(bind=func_end, text=">|", pos=Sim.scene.title_anchor, disabled=True)
     # Sim.button_end = vp.button(bind=func_end, text=">|", pos=Sim.scene.title_anchor)
 
     # Sim.label1 = vp.wtext(pos=Sim.scene.title_anchor, text="---hallo---")
@@ -1471,6 +1528,10 @@ def create_widgets():
     Sim.gui["box_sloped_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
                                                bind=func_toggle_sloped_cables)
     Sim.scene.append_to_caption("\n")
+    Sim.scene.append_to_caption("Animation (full Simulation) Duration [seconds]:  | ")
+    Sim.gui["animation_duration"] = vp.winput(pos=Sim.scene.caption_anchor, text="20", type="numeric", width=50, bind=func_animation_duration)
+
+
     # legend:
     #Sim.gui["legend"] = [
     #    vp.label(text="nodes (busbars)", pixel_pos=True, pos=vp.vector(10, 790, 0), color=vp.color.blue, align="left",
