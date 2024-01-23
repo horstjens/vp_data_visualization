@@ -94,6 +94,8 @@ class Data:
     geo = {} # geo location. format: node_number : (latitude, longitude, is_generator, is_load),
 
 class Sim:
+    canvas_width = 1200
+    canvas_height = 800
     mode = "arrange"
     camera_height = 0.25
     # minmax, lat: [41.06477, 44.00462]   -> 41,45
@@ -110,15 +112,15 @@ class Sim:
     selected_object = None
     animation_running = False
     dragging = False
-    scene = vp.canvas(title=f'version {VERSION}',
+    scene = vp.canvas(title='',
                       # caption="coordinates: ",
-                      width=1200, height=800,
+                      width=canvas_width, height=canvas_height,
                       center=center,
                       background=vp.color.gray(0.8),
                       #align="left",  # caption is to the right?
                       )
 
-    number_of_sub_cables = 6  # sub-nodes = sub_cables -1
+    number_of_sub_cables = 2  # sub-nodes = sub_cables -1
     fps = 60
     dt = 1 / fps
     i = 1  # line in data sheet
@@ -389,11 +391,6 @@ def geo_to_local(lat):
     return Sim.middle[1] - distance_to_center
 
 
-def local_to_geo(z):
-    #TODO wrong lat value
-    """returns latitude, see geo_to_local()"""
-    distance_to_center = z- Sim.middle[1]
-    return Sim.middle[1] + distance_to_center
 
 # ------------ helper function for GUI ------------
 
@@ -496,6 +493,11 @@ def func_time_slider(b):
     Sim.i = b.value
     update_stuff()
 
+def func_subnodes_add():
+    print("adding a subnode")
+
+def func_subnodes_remove():
+    print("removing a subnode")
 
 def func_toggle_dynamic_nodes(b):
     if b.checked:
@@ -1281,7 +1283,11 @@ def create_widgets():
     # Sim.gui["arrange"] = vp.button(bind=func_arrange, text="arrange", pos=Sim.scene.title_anchor, disabled=True)
     # Sim.gui["save_layout"] = vp.button(bind=func_save_layout, text="save layout", pos=Sim.scene.title_anchor,
     #                                   disabled=False)
-    Sim.gui["mode"] = vp.wtext(pos=Sim.scene.title_anchor, text="mode is now: arrange nodes by dragging with mouse")
+
+    Sim.gui["subnodes_add"] = vp.button(bind=func_subnodes_add, text="+", pos=Sim.scene.title_anchor, disabled=True)
+    Sim.gui["subnodes_remove"] = vp.button(bind=func_subnodes_remove, text="-", pos=Sim.scene.title_anchor,
+                                         disabled=True)
+    Sim.gui["mode"] = vp.wtext(pos=Sim.scene.title_anchor, text=" mode is now: arrange nodes. ")
     Sim.gui["simulation"] = vp.button(bind=func_simulation, text="start simulation", pos=Sim.scene.title_anchor,
                                       disabled=False)
     Sim.gui["restart"] = vp.button(bind=func_restart, text="|<", pos=Sim.scene.title_anchor, disabled=True)
@@ -1631,8 +1637,16 @@ def create_widgets():
     Sim.scene.append_to_caption("\n")
     Sim.scene.append_to_caption("Animation (full Simulation) Duration [seconds]:  | ")
     Sim.gui["animation_duration"] = vp.winput(pos=Sim.scene.caption_anchor, text="20", type="numeric", width=50, bind=func_animation_duration)
-    Sim.gui["cursor"] = vp.label(text="mouse pos", pixel_pos=True, pos=vp.vector(10,10,0), color=vp.color.black, align="left", box=False, visible=True)
-
+    Sim.gui["cursor"] = vp.label(text="mouse pos", pixel_pos=True, pos=vp.vector(10,10,0), color=vp.color.black, align="left", box=False, visible=True, opactiy=0)
+    Sim.gui["version"] = vp.label(text=f"version:{VERSION}", pixel_pos=True, pos=vp.vector(Sim.canvas_width-10,Sim.canvas_height-10,0), align="right", color=vp.color.black, box=False, opacity=0)
+    Sim.gui["help1"] = vp.label(text="click on a node, hold down the left mouse button and move the mouse to drag the node\n"
+                                     "use mousewheel to zoom\n"
+                                     "pan the camera by holding left mouse button down (not on a node) and moving the mouse\n",
+                                pixel_pos=True, pos=vp.vector(10, Sim.canvas_height-10,0), color=vp.color.black, align="left", box=False, visible=True, opacity=0)
+    Sim.gui["help2"] = vp.label(text="center of screen", pixel_pos=True, pos=vp.vector(10, Sim.canvas_height-70,0), color=vp.color.green, align="left", box=False, visible=True, opacity=0)
+    Sim.gui["bracket_left"] = vp.label(text="[", pos=Sim.center, xoffset = -20, height=48, visible=True, color=vp.color.green, opacity=0, line=False, box=False)
+    Sim.gui["bracket_right"] = vp.label(text="]", pos=Sim.center, xoffset= 20, height=48, visible=True,
+                                       color=vp.color.green, opacity=0, line=False, box=False)
     # legend:
     #Sim.gui["legend"] = [
     #    vp.label(text="nodes (busbars)", pixel_pos=True, pos=vp.vector(10, 790, 0), color=vp.color.blue, align="left",
@@ -1655,8 +1669,28 @@ def mousebutton_down():
     Sim.selected_object = Sim.scene.mouse.pick
     if Sim.selected_object is None:
         Sim.dragging = False
+        Sim.gui["bracket_left"].visible = False
+        Sim.gui["bracket_right"].visible = False
+        Sim.gui["help2"].visible = False
+        Sim.gui["subnodes_add"].disabled=True
+        Sim.gui["subnodes_remove"].disabled=True
     else:
         Sim.dragging = True
+        Sim.gui["bracket_left"].pos = Sim.selected_object.pos
+        Sim.gui["bracket_right"].pos = Sim.selected_object.pos
+        Sim.gui["bracket_left"].visible = True
+        Sim.gui["bracket_right"].visible = True
+
+        Sim.gui["help2"].visible = True
+        Sim.gui["help2"].text = f"{Sim.selected_object.what} {Sim.selected_object.number}"
+        if Sim.selected_object.what == "subnode":
+            Sim.gui["help2"].text += " press [+] or [-] buttons above to add or remove subnodes."
+            Sim.gui["subnodes_add"].disabled=False
+            Sim.gui["subnodes_remove"].disabled=False
+        else:
+            Sim.gui["subnodes_add"].disabled=True
+            Sim.gui["subnodes_remove"].disabled=True
+
 
 
 def mousebutton_up():
@@ -1675,7 +1709,9 @@ def mouse_move():
         return
     o = Sim.selected_object
     o.pos = vp.vector(Sim.scene.mouse.pos.x, 0, Sim.scene.mouse.pos.z)
-
+    Sim.gui["bracket_left"].visible = False
+    Sim.gui["bracket_right"].visible = False
+    Sim.gui["help2"].visible = False
     # keep inside of grid
     #if not (-Sim.grid_max_x / 2 <= Sim.scene.mouse.pos.x <= Sim.grid_max_x / 2):
     #    o.pos.x = max(-Sim.grid_max_x / 2, o.pos.x)
@@ -2351,7 +2387,7 @@ def main():
         vp.rate(Sim.fps)
         simtime += Sim.dt
         time_since_framechange += Sim.dt
-        Sim.gui["cursor"].text = f"{Sim.scene.mouse.pos.x:.2f},  {local_to_geo(Sim.scene.mouse.pos.z):.2f}"
+        Sim.gui["cursor"].text = f"long: {Sim.scene.mouse.pos.x:.2f}, lat: {geo_to_local(Sim.scene.mouse.pos.z):.2f}"
         # print("simtime", simtime)
 
         # text = f"mouse: {Sim.scene.mouse.pos} discs: "
