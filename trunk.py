@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.21.0 "
+VERSION = "0.22.0 "
 
 
 """
@@ -120,7 +120,7 @@ class Sim:
                       #align="left",  # caption is to the right?
                       )
 
-    number_of_sub_cables = 2  # sub-nodes = sub_cables -1
+    number_of_sub_cables = 8  # should be an even number, because sub-nodes = sub_cables -1. and we need a "middle" subnode
     fps = 60
     dt = 1 / fps
     i = 1  # line in data sheet
@@ -494,10 +494,154 @@ def func_time_slider(b):
     update_stuff()
 
 def func_subnodes_add():
+    """
+     pointlist = []  # for sub-cables
+            pointlist.append(start)
+            for k in range(1, Sim.number_of_sub_cables):  # 6 subnodes
+                p = start + k * vp.norm(diff) * vp.mag(diff) / (Sim.number_of_sub_cables)  # divide by
+                subdisc = vp.cylinder(pos=p, radius=Sim.base["nodes_r"] / 2, color=vp.color.magenta,
+                                      axis=vp.vector(0, Sim.base["nodes_r"] / 3, 0),
+                                      pickable=True)
+                subdisc.number = (i, j, k)
+                subdisc.what = "subnode"
+                Sim.sub_nodes[(i, j, k)] = subdisc
+                pointlist.append(subdisc.pos)
+                # label in the middle subnode
+                if k == int(Sim.number_of_sub_cables / 2):
+                    Sim.labels[f"cable {i}-{j}"] = vp.label(pos=subdisc.pos,
+                                                            text=f"c {i}-{j}",
+                                                            height=10,
+                                                            color=vp.color.white,
+                                                            visible=False,
+                                                            )
+            pointlist.append(end)
+            # -- create sub-cables between sub-discs
+            Sim.sub_cables[(i, j)] = vp.curve(color=vp.color.magenta, radius=0.0, pos=pointlist, pickable=False)
+    """
     print("adding a subnode")
+    # delete all, then make new
+    # get current number of subnodes
+    # Sim.gui["help2] = "removing a subnode from:  subnode (29, 38, 1) press [+] or [-] buttons above to add or remove subnodes."
+    full_text = Sim.gui["help2"].text
+    if "subnode" not in full_text:
+        print("Error: help2 does not display subnode")
+        return
+    # find positions of round brackets
+    startchar = full_text.find("(")
+    endchar = full_text.find(")")
+    middle = full_text[startchar + 1:endchar]
+    i, j, k = middle.split(",")
+    i, j, k = int(i), int(j), int(k)
+    print("ijk:", i, j, k)
+    # how many point are in the subcables ?
+    n = Sim.sub_cables[(i, j)].npoints
+    print("npoints:", n, )
+    # how many points in subcable exist?
+
+    # is n an even number?
+    # if n%2 == 0:
+    #    print(f"error: even number of points {n} in sub-cable ({i},{j}")
+    #    return
+    # really remove some subnodes
+    # remove all old
+    for k in range(1, n - 1):
+        Sim.sub_nodes[(i, j, k)].visible = False
+    print("before del:", len(Sim.sub_nodes))
+    for key in list(Sim.sub_nodes.keys()):
+        if all((key[0] == i, key[1] == j)):
+            del Sim.sub_nodes[key]
+    print("after del:", len(Sim.sub_nodes))
+    Sim.sub_cables[(i, j)].clear()  # remove all points
+    print("empty?", Sim.sub_cables[(i, j)].npoints)
+    # create new ... should be an even number!
+    new_n = n + 2
+    print(f"adding number of points in subcable to {new_n}")
+    start = Sim.nodes[i].pos
+    end = Sim.nodes[j].pos
+    diff = end - start
+    pointlist = []  # for sub-cables
+    pointlist.append(start)
+    for k in range(1, new_n):  # x subnodes
+        p = start + k * vp.norm(diff) * vp.mag(diff) / new_n  # divide by
+        subdisc = vp.cylinder(pos=p, radius=Sim.base["nodes_r"] / 2, color=vp.color.magenta,
+                              axis=vp.vector(0, Sim.base["nodes_r"] / 3, 0),
+                              pickable=True)
+        subdisc.number = (i, j, k)
+        subdisc.what = "subnode"
+        Sim.sub_nodes[(i, j, k)] = subdisc
+        pointlist.append(subdisc.pos)
+    pointlist.append(end)
+    # -- add points to curve
+    Sim.sub_cables[(i, j)].unshift(pointlist)
+    print("new n:", Sim.sub_cables[(i, j)].npoints)
+    # Sim.sub_cables[(i, j)] = vp.curve(color=vp.color.magenta, radius=0.0, pos=pointlist, pickable=False)
+    print("done")
+
 
 def func_subnodes_remove():
-    print("removing a subnode")
+
+    # get current number of subnodes
+    # Sim.gui["help2] = "removing a subnode from:  subnode (29, 38, 1) press [+] or [-] buttons above to add or remove subnodes."
+    full_text = Sim.gui["help2"].text
+    if "subnode" not in full_text:
+        print("Error: help2 does not display subnode")
+        return
+    # find positions of round brackets
+    startchar = full_text.find("(")
+    endchar = full_text.find(")")
+    middle = full_text[startchar+1:endchar]
+    i,j,k = middle.split(",")
+    i,j,k = int(i), int(j), int(k)
+    print("ijk:",i,j,k)
+    # how many point are in the subcables ?
+    n = Sim.sub_cables[(i,j)].npoints
+    print("npoints:", n, )
+    # how many points in subcable exist?
+    if n <= 3:
+        print("This is the only subnode in this cable. Impossible to remove")
+        return
+    # is n an even number?
+    #if n%2 == 0:
+    #    print(f"error: even number of points {n} in sub-cable ({i},{j}")
+    #    return
+    # really remove some subnodes
+    # remove all old
+    for k in range(1, n-1):
+        Sim.sub_nodes[(i,j,k)].visible = False
+    print("before del:",len(Sim.sub_nodes))
+    for key in list(Sim.sub_nodes.keys()):
+        if all((key[0] == i, key[1] == j)):
+            del Sim.sub_nodes[key]
+    print("after del:", len(Sim.sub_nodes))
+    Sim.sub_cables[(i,j)].clear() # remove all points
+    print("empty?",Sim.sub_cables[(i,j)].npoints)
+    # create new ... should be an even number!
+    new_n = n-2
+    print(f"reducing number of points in subcable to {new_n}")
+    start = Sim.nodes[i].pos
+    end = Sim.nodes[j].pos
+    diff = end - start
+    pointlist = []  # for sub-cables
+    pointlist.append(start)
+    for k in range(1, new_n):  # x subnodes
+        p = start + k * vp.norm(diff) * vp.mag(diff) / new_n  # divide by
+        subdisc = vp.cylinder(pos=p, radius=Sim.base["nodes_r"] / 2, color=vp.color.magenta,
+                              axis=vp.vector(0, Sim.base["nodes_r"] / 3, 0),
+                              pickable=True)
+        subdisc.number = (i, j, k)
+        subdisc.what = "subnode"
+        Sim.sub_nodes[(i, j, k)] = subdisc
+        pointlist.append(subdisc.pos)
+    pointlist.append(end)
+    # -- add points to curve
+    Sim.sub_cables[(i,j)].unshift(pointlist)
+    print("new n:", Sim.sub_cables[(i,j)].npoints)
+    #Sim.sub_cables[(i, j)] = vp.curve(color=vp.color.magenta, radius=0.0, pos=pointlist, pickable=False)
+    print("done")
+
+
+
+
 
 def func_toggle_dynamic_nodes(b):
     if b.checked:
@@ -2276,7 +2420,7 @@ def update_stuff():
         # TODO: compare with angle from previous frame, only move when necessary
         # reset pointer1
         p0 = Sim.pointer0[number]
-        p1_axis_vector = vp.vector(0,0,-Sim.radius["pointer1"])  # TODO: update with Sim class 
+        p1_axis_vector = vp.vector(0,0,-Sim.radius["pointer1"])  # TODO: update with Sim class
         p1_axis_vector = vp.rotate(p1_axis_vector, angle=vp.radians(-g_angle), axis=vp.vector(0, 1, 0))
         Sim.pointer1[number].axis = vp.vector(p1_axis_vector.x, p1_axis_vector.y, p1_axis_vector.z)
         Sim.pointer1[number].pos.y = cyl.axis.y
