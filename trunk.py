@@ -980,11 +980,14 @@ def func_simulation(b):
 
 
 def save_layout():  # not a button anymore, therefore no parameter b. function get executed by func_simulation()
-    """save pos for each: generator, node, subnode. Save pointlist for each sub_cable"""
+    """save pos for each: generator, node, subnode, load. Save pointlist for each sub_cable"""
     with open("layout_data.txt", "w") as myfile:
         myfile.write("#generators\n")
         for i, gen in Sim.generators.items():
             myfile.write(f"{i} {gen.pos.x} {gen.pos.y} {gen.pos.z}\n")
+        myfile.write("#loads\n")
+        for i, loa in Sim.loads.items():
+            myfile.write(f"{i} {loa.pos.x} {loa.pos.y} {loa.pos.z}\n")
         myfile.write("#nodes\n")
         for i, cyl in Sim.nodes.items():
             myfile.write(f"{i} {cyl.pos.x} {cyl.pos.y} {cyl.pos.z}\n")
@@ -1864,7 +1867,8 @@ def mouse_move():
     #    o.pos.z = max(-Sim.grid_max_z / 2, o.pos.z)
     #    o.pos.z = min(Sim.grid_max_z / 2, o.pos.z)
     #match o.what:
-    if o.what ==  "node":
+    if o.what == "node":
+            #print("node dragged")
             Sim.labels[f"node {o.number}"].pos = o.pos
             Sim.letters[f"node {o.number}"].pos.x = o.pos.x
             Sim.letters[f"node {o.number}"].pos.z = o.pos.z
@@ -1878,24 +1882,31 @@ def mouse_move():
                     cable.modify(0, pos=Sim.nodes[a].pos)
                     cable.modify(1, pos=Sim.nodes[i].pos)
             # sub-discs
+            # how many now?
+
             for (i2, j2, k2), subdisc in Sim.sub_nodes.items():
                 if (i2 != i) and (j2 != i):
                     continue
+                n = Sim.sub_cables[(i2, j2)].npoints
                 start = Sim.nodes[i2].pos
                 end = Sim.nodes[j2].pos
                 diff = end - start
                 pointlist = []
                 pointlist.append(start)
-                for k in range(1, Sim.number_of_sub_cables):  # 6 subnodes
-                    p = start + k * vp.norm(diff) * vp.mag(diff) / (Sim.number_of_sub_cables)  # divide by
+                for k in range(1, n):  # 6 subnodes
+                    p = start + k * vp.norm(diff) * vp.mag(diff) / n  # divide by
+                    if (i2,j2,k) not in Sim.sub_nodes:
+                        continue
                     Sim.sub_nodes[(i2, j2, k)].pos = p
                     pointlist.append(p)
                     # TODO: sub-optimal code, iterates more often then necessary over all subdiscs
-                    if k == int(Sim.number_of_sub_cables / 2):
-                        Sim.labels[f"cable {i2}-{j2}"].pos = p
+                    #if k == int(Sim.number_of_sub_cables / 2):
+                    #
                 pointlist.append(end)
                 for number, point in enumerate(pointlist):
                     Sim.sub_cables[(i2, j2)].modify(number, pos=point)
+            # label in middle
+            Sim.labels[f"cable {i2}-{j2}"].pos = start + diff/2
             # exist connected generator?
             if o.number in Sim.generator_lines.keys():
                 Sim.generator_lines[o.number].modify(0, pos=o.pos)
