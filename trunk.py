@@ -1056,7 +1056,7 @@ def layout_load():
                 number = int(number)
                 npos = vp.vector(x, y, z)
                 Sim.nodes[number].pos = npos
-                Sim.letters[f"node {number}"].pos = npos + Sim.nodes[number].axis + vp.vector(0, 1, 0)
+                Sim.letters[f"node {number}"].pos = npos #+ Sim.nodes[number].axis + vp.vector(0, 1, 0)
                 Sim.labels[f"node {number}"].pos = npos
                 if number in Sim.generator_lines:
                     Sim.generator_lines[number].modify(0, npos)
@@ -1075,7 +1075,10 @@ def layout_load():
                 gpos = vp.vector(x, y, z)
                 Sim.generators[number].pos = gpos
                 Sim.labels[f"generator {number}"].pos = gpos
-                Sim.letters[f"generator {number}"].pos = gpos + Sim.generators[number].axis #+ vp.vector(0, 1, 0)
+                try:
+                    Sim.letters[f"generator {number}"].pos = gpos #+ Sim.generators[number].axis #+ vp.vector(0, 1, 0)
+                except:
+                    print("problem with letter generator ", number)
                 Sim.discs[number].pos = gpos
                 Sim.pointer0[number].pos = gpos
                 Sim.pointer1[number].pos = gpos
@@ -2033,9 +2036,7 @@ def create_stuff():
         Sim.labels["grid_legend"].append(vp.label(pos=vp.vector(Sim.x2, 0, geo_to_local(lat)), text=f"lat:{lat:.0f}", box=False, xoffset=30, line=False,
                  color=vp.color.black))
 
-    # ====
-    # create nodes (busbars) according to geodata
-
+    # ============== create nodes (busbars) according to geodata =============
     for number in Data.nodes:
         #print("create stuff: node # ", number, type(number), Data.nodes[number])
         # move node objects on map
@@ -2062,7 +2063,7 @@ def create_stuff():
         Sim.nodes[number].what = "node"
         Sim.nodes[number].number = number
         Sim.letters[f"node {number}"] = vp.label(text=f"N{number}", color=vp.color.white,
-                                                 pos=npos + vp.vector(0, Sim.base["nodes_r"], 0),
+                                                 pos=npos, # + vp.vector(0, Sim.base["nodes_r"], 0),
                                                  opacity=0.0,
                                                  box=False,
                                                  # billboard=True, emissive=True,
@@ -2077,11 +2078,11 @@ def create_stuff():
         if is_generator:
             # find out connected generator_number
             ##gnumber = Data.nodes_to_generators[number]
-            gnumber = number + 0
+            #gnumber = number + 0
             # gpos is on a line from the center to the  connected node pos and a bit more
             gpos = npos + vp.norm(npos-Sim.center) * Sim.base["generators_r"] * 3 # TODO: 3 should be parameter!
-            print("create generator ", gnumber)
-            Sim.generators[gnumber] = vp.cylinder(pos=gpos,
+            print("create generator ", number)
+            Sim.generators[number] = vp.cylinder(pos=gpos,
                                                  color=Sim.colors["generators"],
                                                  radius=Sim.base["generators_r"],
                                                  axis=vp.vector(0, Sim.base["generators_r"], 0),
@@ -2094,17 +2095,18 @@ def create_stuff():
                                                  #         'turn': -1,
                                                  #         },
                                                  )
-            Sim.generators[gnumber].what = "generator"
-            Sim.generators[gnumber].number = gnumber
-            Sim.generators[gnumber].gnumber = Data.nodes_to_generators[number]
-            Sim.letters[f"generator {gnumber}"] = vp.label(text=f"G{gnumber}", color=vp.color.white,
+            Sim.generators[number].what = "generator"
+            Sim.generators[number].number = number  # corresponding node number
+            gnumber = Data.nodes_to_generators[number]
+            Sim.generators[number].gnumber = gnumber
+            Sim.letters[f"generator {gnumber}"] = vp.label(text=f"G{number} ({gnumber})", color=vp.color.white,
                                                           pos=gpos+vp.vector(0,Sim.base["generators_r"],0),
                                                           opacity=0.0, box=False,
 
                                                           # billboard=True, emissive=True,
                                                           pickable=False, align="center")
 
-            Sim.labels[f"generator {gnumber}"] = vp.label(pos=gpos,
+            Sim.labels[f"generator {number}"] = vp.label(pos=gpos,
                                                          text=f"g {number}",
                                                          height=10,
                                                          color=vp.color.white,
@@ -2118,14 +2120,14 @@ def create_stuff():
             start = vp.vector(gpos.x, gpos.y, gpos.z)
             end1 = start + vp.vector(0, 0, -Sim.base["generators_r"] * 1.5,)
             end2 = start + vp.vector(0, 0, -Sim.base["generators_r"] * 2.0,)
-            Sim.pointer0[gnumber] = vp.arrow(pos=start,
+            Sim.pointer0[number] = vp.arrow(pos=start,
                                             axis=end1 - start,
                                             color=vp.color.red,
                                             # shaftwidth=1.0,
                                             # headwidth= 3,
                                             pickable=False,
                                             )
-            Sim.pointer1[gnumber] = vp.arrow(pos=start,
+            Sim.pointer1[number] = vp.arrow(pos=start,
                                             axis=end2 - start,
                                             color=vp.color.orange,
                                             round=True,
@@ -2134,7 +2136,7 @@ def create_stuff():
                                             # headwidth = 0.5
                                             )
             # ---- disc ----
-            Sim.discs[gnumber] = vp.extrusion(path=[start, vp.vector(start.x, start.y + 0.001, start.z)],
+            Sim.discs[number] = vp.extrusion(path=[start, vp.vector(start.x, start.y + 0.001, start.z)],
                                              shape=vp.shapes.circle(radius=Sim.base["generators_r"] *1.25,
                                                                     # 0.05 SHOould be parameter!
                                                                     angle1=vp.radians(170),
@@ -2424,6 +2426,7 @@ def update_color(value, what="nodes"):
 
 
 def update_stuff():
+    return
     #if not Sim.animation_running:
     #    return
     # -------- nodes --------
