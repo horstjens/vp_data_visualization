@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.22.0 "
+VERSION = "0.23.0 "
 
 
 """
@@ -120,7 +120,7 @@ class Sim:
                       #align="left",  # caption is to the right?
                       )
 
-    number_of_sub_cables = 8  # should be an even number, because sub-nodes = sub_cables -1. and we need a "middle" subnode
+    number_of_sub_cables = 2  # should be an even number, because sub-nodes = sub_cables -1. and we need a "middle" subnode
     fps = 60
     dt = 1 / fps
     i = 1  # line in data sheet
@@ -151,6 +151,7 @@ class Sim:
               "pointer1": vp.color.red,
               "generator_lines": vp.color.gray(0.25),
               "losses": vp.color.red,
+              "middles": vp.color.gray(0.75)
               }
     factor = {"generators_h": 1.0,
               "nodes_h": 1.0,
@@ -172,6 +173,8 @@ class Sim:
             "loads_h": 0.0,
             "loads_r": 0.04,
             "cables_r": 0.0,
+            "middles_h": 0.0,
+            "middles_r":0.03,
             }
 
     visible = {"generators": True,
@@ -206,6 +209,7 @@ class Sim:
     grid = []
     nodes = {}
     cables = {}  # direct connections (gold), only visible when in arrange mode
+    cables_middle = {} # point exactly between 2 nodes. to display pie chart and label. can be moved by mouse! (attached to sub-node?)
     loads = {}   # consumer of energy
     generators = {}
     pointer0 = {}  # to display angle at each generator
@@ -494,30 +498,6 @@ def func_time_slider(b):
     update_stuff()
 
 def func_subnodes_add():
-    """
-     pointlist = []  # for sub-cables
-            pointlist.append(start)
-            for k in range(1, Sim.number_of_sub_cables):  # 6 subnodes
-                p = start + k * vp.norm(diff) * vp.mag(diff) / (Sim.number_of_sub_cables)  # divide by
-                subdisc = vp.cylinder(pos=p, radius=Sim.base["nodes_r"] / 2, color=vp.color.magenta,
-                                      axis=vp.vector(0, Sim.base["nodes_r"] / 3, 0),
-                                      pickable=True)
-                subdisc.number = (i, j, k)
-                subdisc.what = "subnode"
-                Sim.sub_nodes[(i, j, k)] = subdisc
-                pointlist.append(subdisc.pos)
-                # label in the middle subnode
-                if k == int(Sim.number_of_sub_cables / 2):
-                    Sim.labels[f"cable {i}-{j}"] = vp.label(pos=subdisc.pos,
-                                                            text=f"c {i}-{j}",
-                                                            height=10,
-                                                            color=vp.color.white,
-                                                            visible=False,
-                                                            )
-            pointlist.append(end)
-            # -- create sub-cables between sub-discs
-            Sim.sub_cables[(i, j)] = vp.curve(color=vp.color.magenta, radius=0.0, pos=pointlist, pickable=False)
-    """
     print("adding a subnode")
     # delete all, then make new
     # get current number of subnodes
@@ -554,7 +534,7 @@ def func_subnodes_add():
     Sim.sub_cables[(i, j)].clear()  # remove all points
     print("empty?", Sim.sub_cables[(i, j)].npoints)
     # create new ... should be an even number!
-    new_n = n + 2
+    new_n = n + 1
     print(f"adding number of points in subcable to {new_n}")
     start = Sim.nodes[i].pos
     end = Sim.nodes[j].pos
@@ -829,7 +809,7 @@ def func_factor_losses(b):
 
 
 # def func_arrange():  # not a button anymore, therefore no parameter b.
-#     #Sim.gui["save_layout"].disabled = False
+#     #Sim.gui["layout_save"].disabled = False
 #     Sim.gui["mode"].text = "mode is now: arrange"
 #     Sim.mode = "arrange"
 #     #Sim.gui["arrange"].disabled = True
@@ -860,9 +840,9 @@ def func_animation_duration(b):
 
 
 def func_simulation(b):
-    save_layout()
+    layout_save()
     Sim.gui["mode"].text = "mode is now: simulation"
-    # Sim.gui["save_layout"].disabled = True
+    # Sim.gui["layout_save"].disabled = True
     Sim.mode = "simulation"
     # Sim.gui["arrange"].disabled = False
     Sim.gui["simulation"].disabled = True
@@ -979,7 +959,7 @@ def func_simulation(b):
     #             n += 1
 
 
-def save_layout():  # not a button anymore, therefore no parameter b. function get executed by func_simulation()
+def layout_save():  # not a button anymore, therefore no parameter b. function get executed by func_simulation()
     """save pos for each: generator, node, subnode, load. Save pointlist for each sub_cable"""
     with open("layout_data.txt", "w") as myfile:
         myfile.write("#generators\n")
@@ -996,10 +976,13 @@ def save_layout():  # not a button anymore, therefore no parameter b. function g
             for k in range(curve.npoints):
                 point = curve.point(k)["pos"]
                 myfile.write(f"{i} {j} {k} {point.x} {point.y} {point.z}\n")
+        myfile.write("#middles\n")
+        for (i, j), middle in Sim.cables_middle.items():
+            myfile.write(f"{i} {j} {middle.pos.x} {middle.pos.y} {middle.pos.z}\n")
     print("file layout_data.txt is written")
 
 
-def load_geodata():
+def read_geodata():
     Data.nodes = {}
 
     with open("nodes_geoloacations.csv") as csvfile:
@@ -1035,7 +1018,8 @@ def load_geodata():
 
 
 
-def load_layout():
+def layout_load():
+    points= {}
     # print("generators:", Sim.generators)
     """attempting to load from layout_data.txt if this file can be found"""
     try:
@@ -1058,12 +1042,14 @@ def load_layout():
         elif mode == "curves":
                 i, j, k, x, y, z = [float(word) for word in line.split(" ")]
                 i, j, k = int(i), int(j), int(k)
-                pointpos = vp.vector(x, y, z)
-                Sim.sub_cables[(i, j)].modify(k, pointpos)
-                if (i, j, k) in Sim.sub_nodes:
-                    Sim.sub_nodes[(i, j, k)].pos = pointpos
-                if k == int(Sim.number_of_sub_cables / 2):
-                    Sim.labels[f"cable {i}-{j}"].pos = pointpos
+                points[(i,j,k)] = vp.vector(x, y, z)
+                # the curves may have different number of points than originally
+                #Sim.sub_cables[(i, j)].modify(k, pointpos)
+                #if (i, j, k) in Sim.sub_nodes:
+                #    Sim.sub_nodes[(i, j, k)].pos = pointpos
+                #if k == int(Sim.number_of_sub_cables / 2):
+                #    Sim.labels[f"cable {i}-{j}"].pos = pointpos
+                # TODO: delete all cables and re-create cables and subdiscs from points[(i,j,k)]
 
         elif mode == "nodes":
                 number, x, y, z = [float(word) for word in line.split(" ")]
@@ -1074,11 +1060,14 @@ def load_layout():
                 Sim.labels[f"node {number}"].pos = npos
                 if number in Sim.generator_lines:
                     Sim.generator_lines[number].modify(0, npos)
+                if number in Sim.load_lines:
+                    Sim.load_lines[number].modify(0, npos)
                 for (i, j), curve in Sim.cables.items():
                     if i == number:
                         curve.modify(0, npos)
                     if j == number:
                         curve.modify(1, npos)
+
 
         elif mode == "generators":
                 number, x, y, z = [float(word) for word in line.split(" ")]
@@ -1086,15 +1075,53 @@ def load_layout():
                 gpos = vp.vector(x, y, z)
                 Sim.generators[number].pos = gpos
                 Sim.labels[f"generator {number}"].pos = gpos
-                Sim.letters[f"generator {number}"].pos = gpos + Sim.generators[number].axis + vp.vector(0, 1, 0)
+                Sim.letters[f"generator {number}"].pos = gpos + Sim.generators[number].axis #+ vp.vector(0, 1, 0)
                 Sim.discs[number].pos = gpos
                 Sim.pointer0[number].pos = gpos
                 Sim.pointer1[number].pos = gpos
                 Sim.generator_lines[number].modify(1, pos=gpos)  # 1 is the generator, 0 is the node
                 # Sim.generator_lines[number].modify(0, pos=Sim.nodes[number].pos)
-
+        elif mode == "loads":
+                number, x, y, z = [float(word) for word in line.split(" ")]
+                number = int(number)
+                lpos = vp.vector(x, y, z)
+                Sim.loads[number].pos = lpos
+                Sim.labels[f"load {number}"].pos = lpos
+                Sim.letters[f"load {number}"].pos = lpos + Sim.loads[number].axis
+                Sim.load_lines[number].modify(1, pos=lpos)
+        elif mode == "middles":
+                i, j, x, y, z = [float(word) for word in line.split(" ")]
+                i, j = int(i), int(j)
+                Sim.cables_middle[(i,j)].pos = vp.vector(x,y,z)
+                Sim.labels[f"cable {i}-{j}"].pos = vp.vector(x,y,z)
         else :
                 print("unhandled value for mode in layout file:", mode)
+    # deleting all sub-cables and sub-nodes and making them new from layout:
+    # CLEAR all sub_cables, DELETE all sub-nodes
+    for (i,j), cable in Sim.sub_cables.items():
+        cable.clear()
+    for (i,j,k), subnode in Sim.sub_nodes.items():
+        subnode.visible = False
+    Sim.sub_nodes = {}
+    # fill cables with points
+    for (i,j,k), pos in points.items():
+        Sim.sub_cables[(i,j)].append(points[(i,j,k)])
+    # create sub_nodes
+    for (i,j,k), pos in points.items():
+        cable = Sim.sub_cables[(i,j)]
+        if any((k==0, k==cable.npoints)):
+            continue # first and last point of curve has no sub-node
+
+        subdisc = vp.cylinder(pos=pos, radius=Sim.base["nodes_r"] / 2, color=vp.color.magenta,
+                              axis=vp.vector(0, Sim.base["nodes_r"] / 3, 0),
+                              pickable=True)
+        subdisc.number = (i, j, k)
+        subdisc.what = "subnode"
+        Sim.sub_nodes[(i, j, k)] = subdisc
+
+
+
+
     print("loading of layout data was sucessfull")
 
 
@@ -1428,7 +1455,7 @@ def create_widgets():
     # ---- widgets above window in title area -------
     # Sim.scene.append_to_title("mode:")
     # Sim.gui["arrange"] = vp.button(bind=func_arrange, text="arrange", pos=Sim.scene.title_anchor, disabled=True)
-    # Sim.gui["save_layout"] = vp.button(bind=func_save_layout, text="save layout", pos=Sim.scene.title_anchor,
+    # Sim.gui["layout_save"] = vp.button(bind=func_layout_save, text="save layout", pos=Sim.scene.title_anchor,
     #                                   disabled=False)
 
     Sim.gui["subnodes_add"] = vp.button(bind=func_subnodes_add, text="+", pos=Sim.scene.title_anchor, disabled=True)
@@ -1881,6 +1908,7 @@ def mouse_move():
                 if b == i:
                     cable.modify(0, pos=Sim.nodes[a].pos)
                     cable.modify(1, pos=Sim.nodes[i].pos)
+
             # sub-discs
             # how many now?
 
@@ -1891,10 +1919,14 @@ def mouse_move():
                 start = Sim.nodes[i2].pos
                 end = Sim.nodes[j2].pos
                 diff = end - start
+                mpos = start + diff /2
+                Sim.cables_middle[(i2,j2)].pos = mpos
+                Sim.labels[f"cable {i2}-{j2}"].pos = mpos
+
                 pointlist = []
                 pointlist.append(start)
                 for k in range(1, n):  # 6 subnodes
-                    p = start + k * vp.norm(diff) * vp.mag(diff) / n  # divide by
+                    p = start + k * vp.norm(diff) * vp.mag(diff) / (n-1)  # divide by number of subcables
                     if (i2,j2,k) not in Sim.sub_nodes:
                         continue
                     Sim.sub_nodes[(i2, j2, k)].pos = p
@@ -1904,14 +1936,20 @@ def mouse_move():
                     #
                 pointlist.append(end)
                 for number, point in enumerate(pointlist):
-                    Sim.sub_cables[(i2, j2)].modify(number, pos=point)
-            # label in middle
-            Sim.labels[f"cable {i2}-{j2}"].pos = start + diff/2
+                    #print("number:", number, "points:", Sim.sub_cables[(i2,j2)].npoints)
+                    if Sim.sub_cables[(i2,j2)].npoints > number:
+                        Sim.sub_cables[(i2, j2)].modify(number, pos=point)
+                    #TODO: last point?
+                    
+
+
             # exist connected generator?
             if o.number in Sim.generator_lines.keys():
                 Sim.generator_lines[o.number].modify(0, pos=o.pos)
             if o.number in Sim.load_lines.keys():
                 Sim.load_lines[o.number].modify(0, pos=o.pos)
+
+
     elif o.what == "generator":
             Sim.labels[f"generator {o.number}"].pos = o.pos
             Sim.letters[f"generator {o.number}"].pos.x = o.pos.x
@@ -1926,13 +1964,17 @@ def mouse_move():
             # change only the attached sub-cables
             i, j, k = o.number
             Sim.sub_cables[i, j].modify(k, pos=o.pos)
-            if k == int(Sim.number_of_sub_cables / 2):
-                Sim.labels[f"cable {i}-{j}"].pos = o.pos
+            #if k == int(Sim.number_of_sub_cables / 2):
+            #    Sim.labels[f"cable {i}-{j}"].pos = o.pos
     elif o.what == "load":
         Sim.labels[f"load {o.number}"].pos = o.pos
         Sim.letters[f"load {o.number}"].pos.x = o.pos.x
         Sim.letters[f"load {o.number}"].pos.z = o.pos.z
         Sim.load_lines[o.number].modify(1, pos=o.pos)
+    elif o.what == "middle":
+        (i,j) = o.number
+        #print("moving middle")
+        Sim.labels[f"cable {i}-{j}"].pos = o.pos
 
     else:
             pass  # something else got dragged
@@ -1943,6 +1985,8 @@ def mouse_move():
 
 # def mouseclick(event):
 #    Sim.selected_object = Sim.scene.mouse.pick
+
+
 
 
 def create_stuff():
@@ -2130,9 +2174,6 @@ def create_stuff():
                                                    radius=0,
                                                    color=vp.color.purple,
                                                    pickable=False)
-
-
-
     # ----- create CABLES ----
     for i, to_number_list in Data.cables_dict.items():
         for j in to_number_list:
@@ -2140,6 +2181,7 @@ def create_stuff():
             to_node = Sim.nodes[j]
             if (j, i) in Sim.cables.keys():
                 continue  # create only one direction
+            # Sim.cables is the direct connection. will NOT be moved by mouse
             Sim.cables[(i, j)] = vp.curve(radius=0.0, color=vp.color.orange, pos=[from_node.pos, to_node.pos],
                                           pickable=False)
             Sim.cables[(i, j)].number = (i, j)  # tuple of both node numbers
@@ -2148,7 +2190,23 @@ def create_stuff():
             start = from_node.pos
             end = to_node.pos
             diff = end - start
-            # create sub-discs
+            # create middle
+            mpos = start + diff / 2
+            Sim.cables_middle[(i,j)] = vp.cylinder(pos = mpos,
+                                                   radius=Sim.base["middles_r"],
+                                                   color= Sim.colors["middles"],
+                                                   axis = vp.vector(0,Sim.base["middles_r"],0))
+            Sim.cables_middle[(i,j)].what = "middle"
+            Sim.cables_middle[(i,j)].number = (i,j)
+            Sim.labels[f"cable {i}-{j}"] = vp.label(pos=mpos,
+                                                    text=f"c {i}-{j}",
+                                                    height=10,
+                                                    box=False,
+                                                    opacity=0,
+                                                    color=vp.color.white,
+                                                    visible=True,
+                                                    )
+            # create sub-discs to move around with mouse
             # p = vp.vector(start.x, start.y, start.z)
             pointlist = []  # for sub-cables
             pointlist.append(start)
@@ -2162,13 +2220,13 @@ def create_stuff():
                 Sim.sub_nodes[(i, j, k)] = subdisc
                 pointlist.append(subdisc.pos)
                 # label in the middle subnode
-                if k == int(Sim.number_of_sub_cables / 2):
-                    Sim.labels[f"cable {i}-{j}"] = vp.label(pos=subdisc.pos,
-                                                            text=f"c {i}-{j}",
-                                                            height=10,
-                                                            color=vp.color.white,
-                                                            visible=False,
-                                                            )
+                #if k == int(Sim.number_of_sub_cables / 2):
+                #    Sim.labels[f"cable {i}-{j}"] = vp.label(pos=subdisc.pos,
+                #                                            text=f"c {i}-{j}",
+                #                                            height=10,
+                #                                            color=vp.color.white,
+                #                                            visible=False,
+                #                                            )
             pointlist.append(end)
             # -- create sub-cables between sub-discs
             Sim.sub_cables[(i, j)] = vp.curve(color=vp.color.magenta, radius=0.0, pos=pointlist, pickable=False)
@@ -2566,7 +2624,7 @@ def main():
 
 if __name__ == "__main__":
     create_data()
-    load_geodata()
+    read_geodata()
     read_mva_values()
     read_nodes_to_generators()
     calculate_loading()
@@ -2574,7 +2632,7 @@ if __name__ == "__main__":
     print("bounding_box:", Sim.bounding_box)
     print("middle:", Sim.middle)
 
-    #load_layout()
+    layout_load()
     create_widgets()
     get_Data_min_max()
     main()
