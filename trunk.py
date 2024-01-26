@@ -125,9 +125,6 @@ class Sim:
     dt = 1 / fps
     i = 1  # line in data sheet
     gui = {}  # widgets for gui
-    # status = vp.label(text="nothing", pos=vp.vector(10, 10, 0), color=vp.color.green, pixel_pos=True, align="left")
-    # status2 = vp.label(text="nada", pos=vp.vector(10, 50, 0), color=vp.color.green, pixel_pos=True, align="left")
-    # colors = (vp.color.red, vp.color.green, vp.color.blue, vp.color.yellow)
     colordict = {"crit_low": vp.vector(0, 0, 1),  # dark blue,
                  "too_low": vp.vector(0, 0.5, 1),  # blue,
                  "low": vp.vector(0, 1, 1),  # cyan
@@ -154,8 +151,8 @@ class Sim:
               "middles": vp.color.gray(0.75)
               }
     factor = {"generators_h": 1.0,
-              "nodes_h": 1.0,
               "generators_r": 0.0,
+              "nodes_h": 1.0,
               "nodes_r": 0.0,
               "loads_h":1.0,
               "loads_r":0.0,
@@ -167,11 +164,12 @@ class Sim:
               "losses": 1.0,
               }
     base = {"generators_h": 0.0,
-            "nodes_h": 0.0,
             "generators_r": 0.05,
+            "nodes_h": 0.0,
             "nodes_r": 0.06,
             "loads_h": 0.0,
             "loads_r": 0.04,
+            "cables_h": 0.0,
             "cables_r": 0.0,
             "middles_h": 0.0,
             "middles_r":0.03,
@@ -181,19 +179,14 @@ class Sim:
                "nodes": True,
                "cables": True,
                "loads": True,
-               "flyers": False,
+               "middles": True,
+               #"flyers": False,
                }
-    #radius = {  "generators": 0.05,
-    #            "nodes": 4,
-        #"pointer0": 2 + 0,  # for wind angle
-        #"pointer1": 2 + 0,  # for wind angle
-        #"geo1": grid_max_x / 2 - 25,
-        #"geo2": grid_max_x / 2 - 1,
+
+    #textures = {  # "generators": os.path.join("energy2.png"),
+    #    # "nodes": os.path.join("energy1.png"),
+    #    #"map": os.path.join("assets", "map002.png"),
     #}
-    textures = {  # "generators": os.path.join("energy2.png"),
-        # "nodes": os.path.join("energy1.png"),
-        #"map": os.path.join("assets", "map002.png"),
-    }
     animation_duration = 20  # seconds
     frame_duration = animation_duration / len(Data.df)
     # mini_arrow_length = 2
@@ -214,14 +207,14 @@ class Sim:
     generators = {}
     pointer0 = {}  # to display angle at each generator
     pointer1 = {}  # to display angle at each generator
-    discs = {}
-    generator_lines = {}
-    load_lines = {}
+    discs = {}  # for generators
+    generator_lines = {} # between node and generator
+    load_lines = {}      # between node and load
     sub_nodes = {}  # pink cylinders, draggable by mouse, only visible when in arrange mode
     sub_cables = {}  # pink curve for cable, connecting the sub_nodes. will be transformed into black shadows at simulation start
     #shadows = {}   # black shadows on y position 0, a clone from the sub-cable curve
-    labels = {}  # 2d text label
-    letters = {}  # 3d billboard letters for nodes and generators
+    labels = {}  # 2d text label (detailed)
+    letters = {}  # 2d text label (just the name/number)
     # mini_arrows = {}  # flying along the path, only visible when in simulation mode
     # mini_shadows = {}  # shadow for each glider
     mini_losses = {}  # stalagtites below each glider
@@ -625,6 +618,10 @@ def func_subnodes_remove():
 
 def func_toggle_dynamic_nodes(b):
     if b.checked:
+        pass   # TODO code instead of just pass
+
+def func_toggle_dynamic_loads(b):
+    if b.checked:
         pass
 
 def func_toggle_dynamic_generators(b):
@@ -641,6 +638,27 @@ def func_toggle_nodes_labels(b):
         if name.startswith("node"):
             Sim.labels[name].visible = b.checked
 
+def func_toggle_loads_labels(b):
+    for name, value in Sim.labels.items():
+        if name.startswith("load"):
+            Sim.labels[name].visible = b.checked
+
+def func_toggle_nodes_letters(b):
+    """toggle letters for nodes"""
+    # Sim.letters[f"node {number}"]
+    for key, label in Sim.letters.items():
+        if key.startswith("node "):
+            label.visible = b.checked
+
+def func_toggle_generator_letters(b):
+    for key, label in Sim.letters.items():
+        if key.startswith("generator "):
+            label.visible = b.checked
+
+def func_toggle_loads_letters(b):
+    for key, label in Sim.letters.items():
+        if key.startswith("load "):
+            label.visible = b.checked
 
 def func_toggle_generator_labels(b):
     """toggles labels for generators"""
@@ -682,6 +700,12 @@ def func_toggle_generators(b):
         # Sim.pointer0[i].visible = b.checked
         # Sim.pointer1[i].visible = b.checked
         Sim.generator_lines[i].visible = b.checked
+
+def func_toggle_loads(b):
+    """toggle visibility for loads"""
+    for i in Sim.loads:
+        Sim.loads[i].visible = b.checked
+        Sim.load_lines[i].visible = b.checked
 
 
 def func_toggle_generators_angle(b):
@@ -755,16 +779,27 @@ def func_generators_factor_h(b):
     Sim.factor["generators_h"] = b.number
     update_stuff()
 
+def func_cables_factor_h(b):
+    Sim.factor["cables_h"] = b.number
+    update_stuff()
+
 
 def func_generators_factor_r(b):
     Sim.factor["generators_r"] = b.number
     update_stuff()
 
 
+def func_loads_factor_r(b):
+    Sim.factor["loads_r"] = b.number
+    update_stuff()
+
 def func_generators_base_h(b):
     Sim.base["generators_h"] = b.number
     update_stuff()
 
+def func_cables_base_h(b):
+    Sim.base["cables_h"] = b.number
+    update_stuff()
 
 def func_generators_base_r(b):
     Sim.base["generators_r"] = b.number
@@ -776,6 +811,9 @@ def func_nodes_factor_h(b):
     Sim.factor["nodes_h"] = b.number
     update_stuff()
 
+def func_loads_factor_h(b):
+    Sim.factor["loads_h"] = b.number
+    update_stuff()
 
 def func_nodes_factor_r(b):
     Sim.factor["nodes_r"] = b.number
@@ -786,11 +824,16 @@ def func_nodes_base_h(b):
     Sim.base["nodes_h"] = b.number
     update_stuff()
 
+def func_loads_base_h(b):
+    Sim.base["loads_h"] = b.number
+    update_stuff()
 
 def func_nodes_base_r(b):
     Sim.base["nodes_r"] = b.number
     update_stuff()
 
+def func_loads_base_r(b):
+    Sim.base["loads_r"] = b.number
 
 def func_cables_factor_r(b):
     Sim.factor["cables_r"] = b.number
@@ -857,11 +900,11 @@ def func_simulation(b):
     Sim.gui["box_cables"].disabled = False
     # update gui so that gliders are visible and not anymore disabled
     # Sim.gui["box_gliders"].disabled = False
-    Sim.gui["box_losses"].disabled = False
-    Sim.gui["box_shadows"].disabled = False
+#    Sim.gui["box_losses"].disabled = False
+ #   Sim.gui["box_shadows"].disabled = False
     # Sim.gui["box_gliders"].checked = True
-    Sim.gui["box_losses"].checked = True
-    Sim.gui["box_shadows"].checked = True
+ #   Sim.gui["box_losses"].checked = True
+ #   Sim.gui["box_shadows"].checked = True
 
     # free camera
     Sim.scene.userspin = True
@@ -1122,9 +1165,6 @@ def layout_load():
         subdisc.what = "subnode"
         Sim.sub_nodes[(i, j, k)] = subdisc
 
-
-
-
     print("loading of layout data was sucessfull")
 
 
@@ -1133,6 +1173,24 @@ def hexcode_to_vector(hexcode):
     g = int(hexcode[3:5], base=16) / 256
     b = int(hexcode[5:7], base=16) / 256
     return vp.vector(r, g, b)
+
+def hexcode_from_vector(rgbvector):
+    # r,g,b in vector must be between 0 and 1
+    r,g,b = rgbvector.x, rgbvector.y, rgbvector.z
+    red = int(255 * r)
+    green = int(255 * g)
+    blue = int(255 * b)
+    result = "#"
+    for color in (red, green, blue):
+        if color < 16:
+            result += "0"
+            result += hex(color)[-1:]
+        else:
+            result += hex(color)[-2:]
+    return result
+
+
+
 
 def is_colorstring_valid(colorstring):
     if any((len(colorstring) != 7, colorstring[0] != "#", len([x for x in colorstring[1:] if x not in "0123456789abcdef"])>0)):
@@ -1310,6 +1368,40 @@ def func_color_crit_high_nodes(b):
     Sim.colors["crit_high_nodes"] = b.number
     update_stuff()
 
+# ------- loads -----
+
+def func_color_crit_low_loads(b):
+    Sim.colors["crit_low_loads"] = b.number
+    update_stuff()
+
+def func_color_too_low_loads(b):
+    Sim.colors["too_low_loads"] = b.number
+    update_stuff()
+
+def func_color_low_loads(b):
+    Sim.colors["low_loads"] = b.number
+    update_stuff()
+
+def func_color_good_low_loads(b):
+    Sim.colors["good_low_loads"] = b.number
+    update_stuff()
+
+def func_color_good_high_loads(b):
+    Sim.colors["good_high_loads"] = b.number
+    update_stuff()
+
+def func_color_high_loads(b):
+    Sim.colors["high_loads"] = b.number
+    update_stuff()
+
+def func_color_too_high_loads(b):
+    Sim.colors["too_high_loads"] = b.number
+    update_stuff()
+
+def func_color_crit_high_loads(b):
+    Sim.colors["crit_high_loads"] = b.number
+    update_stuff()
+
 # ------- generators ----------
 
 #def func_color_crit_low_generators(b):
@@ -1483,17 +1575,6 @@ def create_widgets():
     Sim.gui["label_last_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f" of {len(Data.df)} ")
     Sim.scene.append_to_title("\n")
     # ---- widgets below window in caption area --------------
-    # Sim.gui["color_crit_low_nodes"].text = f"{0.9:.2f}"
-    # Sim.gui["color_too_low_nodes"].text = f"{0.925:.2f}"
-    # Sim.gui["color_low_nodes"].text = f"{0.95:.2f}"
-    # Sim.gui["color_good_low_nodes"].text = f"{0.975:.2f}"
-    # Sim.gui["color_good_high_nodes"].text = f"{1.025:.2f}"
-    # Sim.gui["color_high_nodes"].text = f"{1.05:.2f}"
-    # Sim.gui["color_too_high_nodes"].text = f"{1.075:.2f}"
-    # Sim.gui["color_crit_high_nodes"].text= f"{1.1:.2f}"
-    # Sim.scene.append_to_caption("<code>entinity:    |    unit       |"
-    # IMPORTANT ! background-color must always be the last style command (8 chars distance) before the "too low" etc.
-    # TODO: use regex instead?
     t = "<code>entinity:    |    unit       |" \
         "<span style='color:#FFFFFF;font-weight: bold;background-color:#0000FF;'>    crit low   </span>|" \
         "<span style='font-weight: bold;background-color:#00FFFF;'>    too low    </span>|" \
@@ -1505,50 +1586,42 @@ def create_widgets():
         "<span style='font-weight: bold;color:#FFFFFF;background-color:#FF0000;'>    crit high   </span>|" \
         " min / max    </code>\n"
     Sim.gui["color_headings"] = vp.wtext(pos=Sim.scene.caption_anchor, text=t)
+    # ---------------------------
     Sim.scene.append_to_caption("<code>color:       |      RGB      |</code>")
-    # colordict = {"crit_low": vp.vector(0,0,1),     # dark blue,
-    #             "too_low":  vp.vector(0,0.5,1 ),  # blue,
-    #             "low":      vp.vector(0,1,1),     # cyan
-    #             "good_low": vp.vector(0,1,0.5),   # light green
-    #             "good_high":vp.vector(0,1,0),     # green
-    #             "high":     vp.vector(0.5,1,0),   # green-yellow
-    #             "too_high": vp.vector(1,1,0),     # yellow
-    #             "crit_high":vp.vector(1,0,0),     # red
-    #             }
     Sim.gui["color_crit_low"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_low,
                                           width=100,
-                                          type="string", text="#0000FF")
+                                          type="string", text=hexcode_from_vector(Sim.colordict["crit_low"]))
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_too_low"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low,
                                          width=100,
-                                         type="string", text="#0080FF")
+                                         type="string", text=hexcode_from_vector(Sim.colordict["too_low"]))
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_low"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low,
                                      width=100,
-                                     type="string", text="#00FFFF")
+                                     type="string", text=hexcode_from_vector(Sim.colordict["low"]))
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_good_low"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_good_low,
                                           width=100,
-                                          type="string", text="#00FF80")
+                                          type="string", text=hexcode_from_vector(Sim.colordict["good_low"]))
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_good_high"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_good_high,
                                            width=100,
-                                           type="string", text="#00FF00")
+                                           type="string", text=hexcode_from_vector(Sim.colordict["good_high"]))
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_high"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high,
                                       width=100,
-                                      type="string", text="#80FF00")
+                                      type="string", text=hexcode_from_vector(Sim.colordict["high"]))
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_too_high"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high,
                                           width=100,
-                                          type="string", text="#FFFF00")
+                                          type="string", text=hexcode_from_vector(Sim.colordict["too_high"]))
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_crit_high"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_high,
                                            width=100,
-                                           type="string", text="#FF0000")
+                                           type="string", text=hexcode_from_vector(Sim.colordict["crit_high"]))
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.scene.append_to_caption("\n")
-
+    # ---------------------------
     Sim.scene.append_to_caption("<code>nodes:       | Voltage pu    |</code>")
     Sim.gui["color_crit_low_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_low_nodes, width=100,
                                                 type="numeric", text="0.9")
@@ -1578,24 +1651,25 @@ def create_widgets():
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["min_max_nodes"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
+    # ---------------------------
     Sim.scene.append_to_caption("<code>generators:  | loading % MVA |</code>")
     Sim.gui["color_crit_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_low_generators,
                                                      width=100,
-                                                     type="numeric", text="60")
+                                                     type="numeric", text="-100")
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_too_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_generators,
                                                     width=100,
-                                                    type="numeric", text="60")
+                                                    type="numeric", text="-100")
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_generators, width=100,
-                                                type="numeric", text="60")
+                                                type="numeric", text="0")
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_good_low_generators"] = vp.winput(pos=Sim.scene.caption_anchor,
                                                       bind=func_color_good_low_generators, width=100,
                                                       type="numeric", text="60")  #
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_good_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_good_high_generators, width=100,
-                                            type="numeric", text="60")  #
+                                            type="numeric", text="70")  #
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_high_generators"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_generators,
                                                  width=100,
@@ -1611,6 +1685,7 @@ def create_widgets():
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["min_max_generators"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
+    # -----------------------------------------------------
     Sim.scene.append_to_caption("<code>    - angle: | ° Degrees     |</code>")
     Sim.gui["color_crit_low_generators_angle"] = vp.winput(pos=Sim.scene.caption_anchor,
                                                            bind=func_color_crit_low_generators_angle, width=100,
@@ -1649,20 +1724,20 @@ def create_widgets():
 
     Sim.gui["min_max_generators_angle"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
-
+    #-----------------------------------------------------
     Sim.scene.append_to_caption("<code>cables:      | loading % MVA |</code>")
     Sim.gui["color_crit_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_low_cables,
                                                      width=100,
-                                                     type="numeric", text="0")
+                                                     type="numeric", text="-100")
 
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_too_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor,
                                             bind=func_color_too_low_cables, width=100,
-                                            type="numeric", text="60")  #
+                                            type="numeric", text="-100")  #
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor,
                                                  bind=func_color_low_cables, width=100,
-                                                 type="numeric", text="60")  #
+                                                 type="numeric", text="0")  #
 
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_good_low_cables"] = vp.winput(pos=Sim.scene.caption_anchor,
@@ -1671,7 +1746,7 @@ def create_widgets():
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_good_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor,
                                                       bind=func_color_good_high_cables, width=100,
-                                                      type="numeric", text="60")  #
+                                                      type="numeric", text="70")  #
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_high_cables"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_cables,
                                                  width=100,
@@ -1688,6 +1763,46 @@ def create_widgets():
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["min_max_cables"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
+    #------------------------------------
+    Sim.scene.append_to_caption("<code>loads:       |       MW      |</code>")
+    Sim.gui["color_crit_low_loads"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_low_loads,
+                                                 width=100,
+                                                 type="numeric", text="0")
+
+    Sim.scene.append_to_caption("<code>|</code>")
+    Sim.gui["color_too_low_loads"] = vp.winput(pos=Sim.scene.caption_anchor,
+                                                bind=func_color_too_low_loads, width=100,
+                                                type="numeric", text="0")  #
+    Sim.scene.append_to_caption("<code>|</code>")
+    Sim.gui["color_low_loads"] = vp.winput(pos=Sim.scene.caption_anchor,
+                                            bind=func_color_low_loads, width=100,
+                                            type="numeric", text="0")  #
+
+    Sim.scene.append_to_caption("<code>|</code>")
+    Sim.gui["color_good_low_loads"] = vp.winput(pos=Sim.scene.caption_anchor,
+                                                 bind=func_color_good_low_loads, width=100,
+                                                 type="numeric", text="0")  #
+    Sim.scene.append_to_caption("<code>|</code>")
+    Sim.gui["color_good_high_loads"] = vp.winput(pos=Sim.scene.caption_anchor,
+                                                  bind=func_color_good_high_loads, width=100,
+                                                  type="numeric", text="2000")  #
+    Sim.scene.append_to_caption("<code>|</code>")
+    Sim.gui["color_high_loads"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_high_loads,
+                                             width=100,
+                                             type="numeric", text="2000")
+    Sim.scene.append_to_caption("<code>|</code>")
+    Sim.gui["color_too_high_loads"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_high_loads,
+                                                 width=100,
+                                                 type="numeric", text="2000")  #
+    Sim.scene.append_to_caption("<code>|</code>")
+    Sim.gui["color_crit_high_loads"] = vp.winput(pos=Sim.scene.caption_anchor,
+                                                  bind=func_color_crit_high_loads,
+                                                  width=100,
+                                                  type="numeric", text="2000")
+    Sim.scene.append_to_caption("<code>|</code>")
+    Sim.gui["min_max_loads"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
+    Sim.scene.append_to_caption("\n")
+    # ------------------------------------
     #Sim.scene.append_to_caption("<code>losses:      |  </code>")
     #Sim.gui["color_too_low_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_losses, width=100,
     #                                            type="numeric", text="-10.0")  # TODO : get default value
@@ -1711,81 +1826,135 @@ def create_widgets():
     # Sim.gui["box_gliders"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=False, disabled=True,
     #                              bind=func_toggle_gliders)
     Sim.scene.append_to_caption("\n")
+    #-------------------------------------------------------
     Sim.scene.append_to_caption(
-        "entinity   |  visible  |  label  |  radius factor  | radius base  | height factor | height base | dynamic color\n")
+        "|  entity   |  visible  |  letter |  label  |  radius factor  | radius base  | height factor | height base | dynamic color \n")
     Sim.scene.append_to_caption("<code>Nodes:       | </code>")
     Sim.gui["box_node"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
                                       bind=func_toggle_nodes)
+    Sim.gui["box_node_letter"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
+                                            bind=func_toggle_nodes_letters)
     Sim.gui["box_node_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=False,
                                              bind=func_toggle_nodes_labels)
     # Sim.scene.append_to_caption("<code> | </code>")
     Sim.gui["nodes_factor_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_nodes_factor_r, width=50,
                                           # prompt="nodes:",       # prompt does not work with python yet
-                                          type="numeric", text="0.0")
+                                          type="numeric", text=f"{Sim.factor['nodes_r']}")
     Sim.scene.append_to_caption("<code>       | </code>")
     Sim.gui["nodes_base_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_nodes_base_r, width=50,
                                         # prompt="nodes:",       # prompt does not work with python yet
-                                        type="numeric", text="4.0")
+                                        type="numeric", text=f"{Sim.base['nodes_r']}")
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["nodes_factor_h"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_nodes_factor_h, width=50,
                                           # prompt="nodes:",       # prompt does not work with python yet
-                                          type="numeric", text="1.0")
+                                          type="numeric", text=f"{Sim.factor['nodes_h']}")
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["nodes_base_h"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_nodes_base_h, width=50,
                                         # prompt="nodes:",       # prompt does not work with python yet
-                                        type="numeric", text="0.0")
+                                        type="numeric", text=f"{Sim.base['nodes_h']}")
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["box_dynamic_nodes"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=True, bind=func_toggle_dynamic_nodes)
     Sim.scene.append_to_caption("<code>      | </code>\n")
+    # --------------------------------
     Sim.scene.append_to_caption("<code>Cables:      | </code>")
-    Sim.gui["box_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
+    Sim.gui["box_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |       | </code>", checked=True,
                                         disabled=True,
                                         bind=func_toggle_cables)
-    Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=False,
+    #Sim.gui["box_cables_letter"] = vp.checbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
+    #                                        vind=func_toggle_nodes_letters)
+    Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
                                                bind=func_toggle_cable_labels)
-    Sim.gui["factor_cables_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_cables_factor_r, width=50,
+    Sim.gui["cables_factor_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_cables_factor_r, width=50,
                                            # prompt="nodes:",       # prompt does not work with python yet
-                                           type="numeric", text="0.01")
+                                           type="numeric", text=f"{Sim.factor['cables_r']}")
     Sim.scene.append_to_caption("<code>       | </code>")
-    Sim.gui["base_cables_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_cables_base_r, width=50,
+    Sim.gui["cables_base_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_cables_base_r, width=50,
                                          # prompt="nodes:",       # prompt does not work with python yet
-                                         type="numeric", text="0.00")
-    Sim.scene.append_to_caption("<code>       | </code>")
+                                         type="numeric", text=f"{Sim.base['cables_r']}")
+    Sim.scene.append_to_caption("<code>      | </code>")
+    Sim.gui["cables_factor_h"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_cables_factor_h, width=50,
+                                          # prompt="nodes:",       # prompt does not work with python yet
+                                          type="numeric", text=f"{Sim.factor['cables_h']}")
+    Sim.scene.append_to_caption("<code>      | </code>")
+    Sim.gui["cables_base_h"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_cables_base_h, width=50,
+                                        # prompt="nodes:",       # prompt does not work with python yet
+                                        type="numeric", text=f"{Sim.base['cables_h']}")
+
+    Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["box_dynamic_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=True, bind=func_toggle_dynamic_cables)
-    Sim.scene.append_to_caption("<code>      | </code>\n")
-    Sim.scene.append_to_caption("<code>Losses:      | </code>")
-    Sim.gui["box_losses"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=False,
-                                        disabled=True, bind=func_toggle_losses)
-    Sim.scene.append_to_caption("<code>     | </code>")  # because no labels for losses (it's in the cable lable)
-    Sim.gui["factor_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_losses, width=50,
-                                         type="numeric", text="1.0")
-    Sim.scene.append_to_caption("<code> | </code>\n")
-    Sim.scene.append_to_caption("<code>Generators:  | ")
+    Sim.scene.append_to_caption("<code>      |  </code>")
+    Sim.scene.append_to_caption("<code>sloped cables:  </code>")
+    Sim.gui["box_sloped_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
+                                               bind=func_toggle_sloped_cables)
+    Sim.scene.append_to_caption("\n")
+    # ------------------------------------------------------------
+    #Sim.scene.append_to_caption("<code>Losses:      | </code>")
+    #Sim.gui["box_losses"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=False,
+    #                                    disabled=True, bind=func_toggle_losses)
+    #Sim.scene.append_to_caption("<code>     | </code>")  # because no labels for losses (it's in the cable lable)
+    #Sim.gui["factor_losses"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_factor_losses, width=50,
+    #                                     type="numeric", text="1.0")
+    #Sim.scene.append_to_caption("<code> | </code>\n")
+    # --------------------------------------
+    Sim.scene.append_to_caption("<code>Generators:  | </code>")
     Sim.gui["box_generator"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
                                            bind=func_toggle_generators)
+    Sim.gui["box_generator_letter"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
+                                            bind=func_toggle_generator_letters)
     Sim.gui["box_generator_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=False,
                                                   bind=func_toggle_generator_labels)
     # Sim.scene.append_to_caption("<code> | </code>")
     Sim.gui["generators_factor_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_generators_factor_r, width=50,
                                                # prompt="generators:", # prompt does not work with python yet
-                                               type="numeric", text="0.0")
+                                               type="numeric", text=f"{Sim.factor['generators_r']}")
     Sim.scene.append_to_caption("<code>       | </code>")
     Sim.gui["generators_base_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_generators_base_r, width=50,
                                              # prompt="generators:", # prompt does not work with python yet
-                                             type="numeric", text="5.0")
+                                             type="numeric", text=f"{Sim.base['generators_r']}")
 
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["generators_factor_h"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_generators_factor_h, width=50,
                                                # prompt="generators:", # prompt does not work with python yet
-                                               type="numeric", text="1.0")
+                                               type="numeric", text=f"{Sim.factor['generators_h']}")
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["generators_base_h"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_generators_base_h, width=50,
                                              # prompt="generators:", # prompt does not work with python yet
-                                             type="numeric", text="0.0")
+                                             type="numeric", text=f"{Sim.base['generators_h']}")
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["box_dynamic_generators"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=True, bind=func_toggle_dynamic_generators)
     Sim.scene.append_to_caption("<code>      | </code>\n")
-    Sim.scene.append_to_caption("<code>    -angle:  |")
+    #-------------------------------------------------------
+    Sim.scene.append_to_caption("<code>Loads:       | </code>")
+    Sim.gui["box_loads"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
+                                           bind=func_toggle_loads)
+    Sim.gui["box_loads_letter"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
+                                                  bind=func_toggle_loads_letters)
+    Sim.gui["box_loads_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=False,
+                                                  bind=func_toggle_loads_labels)
+    # Sim.scene.append_to_caption("<code> | </code>")
+    Sim.gui["loads_factor_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_loads_factor_r, width=50,
+                                               # prompt="generators:", # prompt does not work with python yet
+                                               type="numeric", text=f"{Sim.factor['loads_r']}")
+    Sim.scene.append_to_caption("<code>       | </code>")
+    Sim.gui["loads_base_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_loads_base_r, width=50,
+                                             # prompt="generators:", # prompt does not work with python yet
+                                             type="numeric", text=f"{Sim.base['loads_r']}")
+
+    Sim.scene.append_to_caption("<code>      | </code>")
+    Sim.gui["loads_factor_h"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_loads_factor_h, width=50,
+                                               # prompt="generators:", # prompt does not work with python yet
+                                               type="numeric", text=f"{Sim.factor['loads_h']}")
+    Sim.scene.append_to_caption("<code>      | </code>")
+    Sim.gui["loads_base_h"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_loads_base_h, width=50,
+                                             # prompt="generators:", # prompt does not work with python yet
+                                             type="numeric", text=f"{Sim.base['loads_h']}")
+    Sim.scene.append_to_caption("<code>      | </code>")
+    Sim.gui["box_dynamic_loads"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=False,
+                                                    bind=func_toggle_dynamic_loads)
+    Sim.scene.append_to_caption("<code>      | </code>\n")
+    #---------------------------------------------
+    # -- - - -- -- - - - -
+    Sim.scene.append_to_caption("<code>Gen. angle:  |")
     Sim.gui["box_generators_angle"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
                                                   bind=func_toggle_generators_angle)
     Sim.scene.append_to_caption("<code>                 |\n </code>")
@@ -1800,20 +1969,18 @@ def create_widgets():
     Sim.gui["box_grid"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
                                       bind=func_toggle_grid)
     Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>letters:     |  </code>")
-    Sim.gui["box_letters"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
-                                         bind=func_toggle_letters)
-    Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>legend:      |  </code>")
+    #Sim.scene.append_to_caption("<code>letters:     |  </code>")
+    #Sim.gui["box_letters"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
+    #                                     bind=func_toggle_letters)
+    #Sim.scene.append_to_caption("\n")
+    #Sim.scene.append_to_caption("<code>legend:      |  </code>")
     #Sim.gui["box_legend"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=False,
     #                                    bind=func_toggle_legend)
-    Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("<code>sloped cables|  </code>")
-    Sim.gui["box_sloped_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
-                                               bind=func_toggle_sloped_cables)
-    Sim.scene.append_to_caption("\n")
+    #Sim.scene.append_to_caption("\n")
+    #Sim.scene.append_to_caption("\n")
     Sim.scene.append_to_caption("Animation (full Simulation) Duration [seconds]:  | ")
     Sim.gui["animation_duration"] = vp.winput(pos=Sim.scene.caption_anchor, text="20", type="numeric", width=50, bind=func_animation_duration)
+    # Sim.scene.append_to_caption("\n")
     Sim.gui["cursor"] = vp.label(text="mouse pos", pixel_pos=True, pos=vp.vector(10,10,0), color=vp.color.black, align="left", box=False, visible=True, opactiy=0)
     Sim.gui["version"] = vp.label(text=f"version:{VERSION}", pixel_pos=True, pos=vp.vector(Sim.canvas_width-10,Sim.canvas_height-10,0), align="right", color=vp.color.black, box=False, opacity=0)
     Sim.gui["help1"] = vp.label(text="click on a node, hold down the left mouse button and move the mouse to drag the node\n"
@@ -2426,7 +2593,7 @@ def update_color(value, what="nodes"):
 
 
 def update_stuff():
-    return
+    return  # TODO remove this line
     #if not Sim.animation_running:
     #    return
     # -------- nodes --------
