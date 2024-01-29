@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.24.0 "
+VERSION = "0.24.1 "
 
 
 """
@@ -2676,6 +2676,7 @@ def get_Data_min_max():
     Sim.gui["color_crit_high_cables"].text = "120"
     Sim.colors["crit_high_cables"] = 120
 
+
     for (number, targetlist) in Data.cables_dict.items():
         for target in targetlist:
             s = Data.df[f"loading_cable_{number}_{target}"]
@@ -2711,16 +2712,9 @@ def get_Data_min_max():
     Sim.colors["crit_high_loads"] = 1000
 
     # TODO replace with loads (p-value) data from big table
+    Data.loads_min = min([p for (p,q) in Data.nodes_load_pq.values()])
+    Data.loads_max = max([p for (p,q) in Data.nodes_load_pq.values()])
 
-    for node, (p,q) in Data.nodes_load_pq.items():
-        if Data.loads_min is None:
-            Data.loads_min = mi
-        elif mi < Data.loads_min:
-            Data.loads_min = mi
-        if Data.loads_max is None:
-            Data.loads_max = ma
-        elif ma > Data.loads_max:
-            Data.loads_max = ma
     Sim.gui["min_max_loads"].text = f"<code>{Data.loads_min:.2f} / {Data.loads_max:.2f}</code>"
 
 
