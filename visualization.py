@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.23.0 "
+VERSION = "0.24.0 "
 
 
 """
@@ -22,6 +22,9 @@ nodes or busbars(small networks)
 
 cables connect nodes with each powers 
        > power from/to
+       
+loads:
+      > p value
 
 color coding:       bad     crit     toler   ok     ok    toler    crit      bad
 Angle	deg	        -180	-170	-160	-150	  150	 160	  170	  180   (gen.) 
@@ -74,6 +77,8 @@ class Data:
     generators_angle_max = None
     cables_min = None
     cables_max = None
+    loads_min = None
+    loads_max = None
     losses_min = None
     losses_max = None
     time_col_name = "Time(s)"
@@ -157,8 +162,8 @@ class Sim:
               "nodes_r": 0.0,
               "loads_h": 0.001,
               "loads_r":0.0,
-              "cables_h":1.0,
-              "cables_r": 0.01,
+              "cables_h":0.0,
+              "cables_r": 0.0,
               "arrows": 0.01,
               "arrows_x": 0.01,
               "arrows_z": 0.01,
@@ -172,8 +177,8 @@ class Sim:
             "nodes_r": 0.06,
             "loads_h": 0.0,
             "loads_r": 0.04,
-            "cables_h": 0.0,
-            "cables_r": 0.0,
+            "cables_h": 0.1,
+            "cables_r": 0.03,
             "middles_h": 0.0,
             "middles_r":0.03,
             "flying_arrows_h": 0.08,
@@ -186,7 +191,12 @@ class Sim:
                "middles": True,
                #"flyers": False,
                }
-
+    dynamic_colors = {"generators": True,
+                      "nodes": True,
+                      "cables": True,
+                      "loads": True,
+                      "middles":True,
+                      }
     #textures = {  # "generators": os.path.join("energy2.png"),
     #    # "nodes": os.path.join("energy1.png"),
     #    #"map": os.path.join("assets", "map002.png"),
@@ -201,7 +211,7 @@ class Sim:
 
     # cursor = vp.cylinder(radius = 1, color=vp.color.white, pos = vp.vector(0,0,0), axis=vp.vector(0,0.2,0),
     # opacity=0.5, pickable=False)
-    sloped_cables = True   # cables are sloped depending on the height of the connected node cylinders
+    sloped_cables = False   # cables are sloped depending on the height of the connected node cylinders
     # --- vpython objects -----
     grid = []
     nodes = {}
@@ -225,17 +235,22 @@ class Sim:
     # arrows indication flow in cables
     arrows_ij = {}  # arrows along sub_nodes, pointing from lower node number to higher node number
     arrows_ji = {}  # arrows along sub_nodes, pointing from hight node number to lower node number
+    arrows_number = 0
     arrows = {} # (i,j)
+    shadows = {}
     arrows_speed = 0.02
 
 
 class FlyingArrow(vp.arrow):
     def __init__(self, i, j, k, i2j, **kwargs):
         super().__init__(**kwargs)
+        self.number = Sim.arrows_number
+        Sim.arrows_number += 1
         self.i = i
         self.j = j
-        self.k = k
-        self.i2j = i2j # bool
+        self.k = k # sub-cable point where arrow is starting from
+        self.k2 = None # sub-cable point where arrow is traveling to
+        self.i2j = i2j # bool # direction of power flow: True if power flows from node i toward node j. otherwise False
         curve = Sim.sub_cables[(i,j)]
         self.pointlist = [d["pos"] for d in curve.slice(0, curve.npoints)]
         self.new_k2()
@@ -245,6 +260,10 @@ class FlyingArrow(vp.arrow):
         if (self.i, self.j) not in Sim.arrows:
             Sim.arrows[(self.i, self.j)] = [] # empty list
         Sim.arrows[(self.i, self.j)].append(self)
+        self.color = Sim.colors["cables"]
+        # create shadow arrow
+        Sim.shadows[self.number] = vp.arrow(color=vp.color.gray(0.1), pos=vp.vector(self.pos.x, 0, self.pos.z),
+                                            axis=vp.vector(self.axis.x, 0, self.axis.z))
 
     def new_k2(self):
         if self.i2j:
@@ -264,19 +283,20 @@ class FlyingArrow(vp.arrow):
         self.k, self.k2 = self.k2, self.k
         self.i2j = not self.i2j
         self.pos2 = self.pointlist[self.k2]
-        self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_h"]
-        self.color = vp.color.green
+        self.axis = vp.norm(self.pos2 - vp.vector(self.pos.x, 0, self.pos.z))  * Sim.base["flying_arrows_h"]
+        #self.color = vp.color.green
 
 
     def update(self, dt):
+        save_y = self.pos.y
         new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
-        self.pos = new_pos # TODO: switch points
-        print("newpos:",self.i,self.j, self.pos)
+        self.pos = new_pos
+        #print("newpos:",self.i,self.j, self.pos)
         # if middle of arrow is over pos2, rotate arrow and get new pos2
-        middle = self.pos + self.axis / 2
-        if vp.mag(middle - self.pointlist[self.k]) > vp.mag(self.pointlist[self.k2]-self.pointlist[self.k]):
-            self.color=vp.color.red
-
+        #middle = self.pos + self.axis / 2
+        #if vp.mag(middle - self.pointlist[self.k]) > vp.mag(self.pointlist[self.k2]-self.pointlist[self.k]):
+        if vp.mag(self.pos - self.pointlist[self.k]) > vp.mag(self.pointlist[self.k2] - self.pointlist[self.k]):
+            #self.color=vp.color.red
             # calculate new k2
             if self.i2j:
                 self.k += 1
@@ -286,7 +306,10 @@ class FlyingArrow(vp.arrow):
             self.pos = self.pointlist[self.k]
             self.pos2 = self.pointlist[self.k2]
             self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_h"]
-
+        self.pos.y = save_y
+        # update shadow
+        Sim.shadows[self.number].pos = vp.vector(self.pos.x, 0, self.pos.z)
+        Sim.shadows[self.number].axis = vp.vector(self.axis.x, 0, self.axis.z)
 
 
 
@@ -547,6 +570,7 @@ def func_play(b):
     if "play" in b.text.lower():
         Sim.animation_running = True
         Sim.gui["play"].text = "Pause ||"
+        #update_stuff()
     else:
         Sim.animation_running = False
         Sim.gui["play"].text = "Play >"
@@ -687,20 +711,21 @@ def func_subnodes_remove():
 
 
 def func_toggle_dynamic_nodes(b):
-    if b.checked:
-        pass   # TODO code instead of just pass
+    Sim.dynamic_colors["nodes"] = b.checked
+    update_stuff()
 
 def func_toggle_dynamic_loads(b):
-    if b.checked:
-        pass
+    Sim.dynamic_colors["loads"] = b.checked
+    update_stuff()
 
 def func_toggle_dynamic_generators(b):
-    if b.checked:
-        pass
+    Sim.dynamic_colors["generators"] = b.checked
+    update_stuff()
 
 def func_toggle_dynamic_cables(b):
-    if b.checked:
-        pass
+    Sim.dynamic_colors["cables"] = b.checked
+    update_stuff()
+
 
 def func_toggle_nodes_labels(b):
     """toggles labels for nodes"""
@@ -718,6 +743,11 @@ def func_toggle_nodes_letters(b):
     # Sim.letters[f"node {number}"]
     for key, label in Sim.letters.items():
         if key.startswith("node "):
+            label.visible = b.checked
+
+def func_toggle_cable_letters(b):
+    for key, label in Sim.letters.items():
+        if key.startswith("cable "):
             label.visible = b.checked
 
 def func_toggle_generator_letters(b):
@@ -821,7 +851,7 @@ def func_toggle_letters(b):
 
 def func_toggle_sloped_cables(b):
     Sim.sloped_cables = b.checked
-    if not b.checked:
+    #if not b.checked:
         # return all subcable curve points to y value zero:
         #for (i, j), curve in Sim.sub_cables.items():
             #yi = Sim.nodes[i].axis.y
@@ -831,12 +861,12 @@ def func_toggle_sloped_cables(b):
         #    for k in range(curve.npoints):
         #        oldpos = curve.point(k)["pos"]
         #        curve.modify(k, pos=vp.vector(oldpos.x, 0, oldpos.z))
-        for arrow in Sim.arrows_ij.values():
-            arrow.pos.y = 0
-            arrow.axis.y = 0
-        for arrow in Sim.arrows_ji.values():
-            arrow.pos.y = 0
-            arrow.axis.y = 0
+        #for arrow in Sim.arrows_ij.values():
+        #    arrow.pos.y = 0
+        #    arrow.axis.y = 0
+        #for arrow in Sim.arrows_ji.values():
+        #    arrow.pos.y = 0
+        #    arrow.axis.y = 0
     update_stuff()
 
 #def func_toggle_legend(b):
@@ -867,6 +897,9 @@ def func_loads_factor_r(b):
 def func_generators_base_h(b):
     Sim.base["generators_h"] = b.number
     update_stuff()
+
+def func_flying_arrows_speed(b):
+    Sim.arrows_speed = b.number
 
 def func_cables_base_h(b):
     Sim.base["cables_h"] = b.number
@@ -905,6 +938,7 @@ def func_nodes_base_r(b):
 
 def func_loads_base_r(b):
     Sim.base["loads_r"] = b.number
+    update_stuff()
 
 def func_cables_factor_r(b):
     Sim.factor["cables_r"] = b.number
@@ -913,6 +947,11 @@ def func_cables_factor_r(b):
 
 def func_cables_base_r(b):
     Sim.base["cables_r"] = b.number
+    update_stuff()
+
+def func_flying_arrows_h(b):
+    """update length of flying arrows"""
+    Sim.base["flying_arrows_h"] = b.number
     update_stuff()
 
 
@@ -990,7 +1029,7 @@ def func_start_simulation(b):
             o.visible = False
     # turn all pink sub-cables into black shadows
     for (i,j), curve in Sim.sub_cables.items():
-        curve.color=vp.color.black
+        curve.color=vp.color.gray(0.33)
 
     # ---- start flying arrows
     for (i,j), curve in Sim.sub_cables.items():
@@ -1237,6 +1276,7 @@ def layout_load():
                 i, j = int(i), int(j)
                 Sim.cables_middle[(i,j)].pos = vp.vector(x,y,z)
                 Sim.labels[f"cable {i}-{j}"].pos = vp.vector(x,y,z)
+                Sim.letters[f"cable {i}-{j}"].pos = vp.vector(x,y,z)
         else :
                 print("unhandled value for mode in layout file:", mode)
     # deleting all sub-cables and sub-nodes and making them new from layout:
@@ -1721,10 +1761,10 @@ def create_widgets():
     # ---------------------------
     Sim.scene.append_to_caption("<code>nodes:       | Voltage pu    |</code>")
     Sim.gui["color_crit_low_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_crit_low_nodes, width=100,
-                                                type="numeric", text="0.9")
+                                                type="numeric", text="999")
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_too_low_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_too_low_nodes, width=100,
-                                               type="numeric", text="0.925")
+                                               type="numeric", text="999")
     Sim.scene.append_to_caption("<code>|</code>")
     Sim.gui["color_low_nodes"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_color_low_nodes, width=100,
                                            type="numeric", text="0.95")
@@ -1925,7 +1965,7 @@ def create_widgets():
     Sim.scene.append_to_caption("\n")
     #-------------------------------------------------------
     Sim.scene.append_to_caption(
-        "|  entity   |  visible  |  letter |  label  |  radius factor  | radius base  | height factor | height base | dynamic color \n")
+        "|  entity   |  visible  |  letter | label|  radius factor  | radius base   | height factor | height base  | dynamic color \n")
     Sim.scene.append_to_caption("<code>Nodes:       | </code>")
     Sim.gui["box_node"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
                                       bind=func_toggle_nodes)
@@ -1950,16 +1990,16 @@ def create_widgets():
                                         # prompt="nodes:",       # prompt does not work with python yet
                                         type="numeric", text=f"{Sim.base['nodes_h']}")
     Sim.scene.append_to_caption("<code>      | </code>")
-    Sim.gui["box_dynamic_nodes"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=True, bind=func_toggle_dynamic_nodes)
+    Sim.gui["box_dynamic_nodes"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=Sim.dynamic_colors["nodes"], bind=func_toggle_dynamic_nodes)
     Sim.scene.append_to_caption("<code>      | </code>\n")
     # --------------------------------
     Sim.scene.append_to_caption("<code>Cables:      | </code>")
-    Sim.gui["box_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |       | </code>", checked=True,
+    Sim.gui["box_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
                                         disabled=True,
                                         bind=func_toggle_cables)
-    #Sim.gui["box_cables_letter"] = vp.checbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
-    #                                        vind=func_toggle_nodes_letters)
-    Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
+    Sim.gui["box_cables_letter"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=True,
+                                            bind=func_toggle_cable_letters)
+    Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> | </code>", checked=False,
                                                bind=func_toggle_cable_labels)
     Sim.gui["cables_factor_r"] = vp.winput(pos=Sim.scene.caption_anchor, bind=func_cables_factor_r, width=50,
                                            # prompt="nodes:",       # prompt does not work with python yet
@@ -1978,10 +2018,11 @@ def create_widgets():
                                         type="numeric", text=f"{Sim.base['cables_h']}")       # disabled does not work for winput
 
     Sim.scene.append_to_caption("<code>      | </code>")
-    Sim.gui["box_dynamic_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=True, bind=func_toggle_dynamic_cables)
+    Sim.gui["box_dynamic_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=Sim.dynamic_colors["cables"],
+                                                bind=func_toggle_dynamic_cables)
     Sim.scene.append_to_caption("<code>      |  </code>")
     Sim.scene.append_to_caption("<code>sloped cables:  </code>")
-    Sim.gui["box_sloped_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
+    Sim.gui["box_sloped_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> (take height from connecting nodes)</code>", checked=False,
                                                bind=func_toggle_sloped_cables)
     Sim.scene.append_to_caption("\n")
     # ------------------------------------------------------------
@@ -2018,7 +2059,8 @@ def create_widgets():
                                              # prompt="generators:", # prompt does not work with python yet
                                              type="numeric", text=f"{Sim.base['generators_h']}")
     Sim.scene.append_to_caption("<code>      | </code>")
-    Sim.gui["box_dynamic_generators"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=True, bind=func_toggle_dynamic_generators)
+    Sim.gui["box_dynamic_generators"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=Sim.dynamic_colors["generators"],
+                                                    bind=func_toggle_dynamic_generators)
     Sim.scene.append_to_caption("<code>      | </code>\n")
     #-------------------------------------------------------
     Sim.scene.append_to_caption("<code>Loads:       | </code>")
@@ -2046,7 +2088,7 @@ def create_widgets():
                                              # prompt="generators:", # prompt does not work with python yet
                                              type="numeric", text=f"{Sim.base['loads_h']}")
     Sim.scene.append_to_caption("<code>      | </code>")
-    Sim.gui["box_dynamic_loads"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=False,
+    Sim.gui["box_dynamic_loads"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=Sim.dynamic_colors["loads"],
                                                     bind=func_toggle_dynamic_loads)
     Sim.scene.append_to_caption("<code>      | </code>\n")
     #---------------------------------------------
@@ -2075,8 +2117,14 @@ def create_widgets():
     #                                    bind=func_toggle_legend)
     #Sim.scene.append_to_caption("\n")
     #Sim.scene.append_to_caption("\n")
-    Sim.scene.append_to_caption("Animation (full Simulation) Duration [seconds]:  | ")
+    Sim.scene.append_to_caption("Animation (full Simulation) Duration [seconds]: ")
     Sim.gui["animation_duration"] = vp.winput(pos=Sim.scene.caption_anchor, text="20", type="numeric", width=50, bind=func_animation_duration)
+    Sim.scene.append_to_caption(" | length of flying arrows: ")
+    Sim.gui["flying_arrows_h"] = vp.winput(pos= Sim.scene.caption_anchor, text=f"{Sim.base['flying_arrows_h']}",
+                                           type="numeric", width=50, bind=func_flying_arrows_h)
+    Sim.scene.append_to_caption(" | speed of flying arrows: ")
+    Sim.gui["flying_arrows_speed"] = vp.winput(pos= Sim.scene.caption_anchor, text=f"{Sim.arrows_speed}",
+                                           type="numeric", width=50, bind=func_flying_arrows_speed)
     # Sim.scene.append_to_caption("\n")
     Sim.gui["cursor"] = vp.label(text="mouse pos", pixel_pos=True, pos=vp.vector(10,10,0), color=vp.color.black, align="left", box=False, visible=True, opactiy=0)
     Sim.gui["version"] = vp.label(text=f"version:{VERSION}", pixel_pos=True, pos=vp.vector(Sim.canvas_width-10,Sim.canvas_height-10,0), align="right", color=vp.color.black, box=False, opacity=0)
@@ -2242,6 +2290,7 @@ def mouse_move():
         (i,j) = o.number
         #print("moving middle")
         Sim.labels[f"cable {i}-{j}"].pos = o.pos
+        Sim.letters[f"cable {i}-{j}"].pos = o.pos
 
     else:
             pass  # something else got dragged
@@ -2467,13 +2516,24 @@ def create_stuff():
                                                    axis = vp.vector(0,Sim.base["middles_r"],0))
             Sim.cables_middle[(i,j)].what = "middle"
             Sim.cables_middle[(i,j)].number = (i,j)
-            Sim.labels[f"cable {i}-{j}"] = vp.label(pos=mpos,
+            Sim.letters[f"cable {i}-{j}"] = vp.label(pos=mpos,
                                                     text=f"c {i}-{j}",
                                                     height=10,
                                                     box=False,
                                                     opacity=0,
+                                                    line=False,
                                                     color=vp.color.white,
                                                     visible=True,
+                                                    )
+            Sim.labels[f"cable {i}-{j}"] = vp.label(pos=mpos,
+                                                    line=False,
+                                                    text=f"c {i}-{j}",
+                                                    height=10,
+                                                    yoffset=-20,
+                                                    box=False,
+                                                    opacity=0,
+                                                    color=vp.color.white,
+                                                    visible=False,
                                                     )
             # create sub-discs to move around with mouse
             # p = vp.vector(start.x, start.y, start.z)
@@ -2568,17 +2628,21 @@ def get_Data_min_max():
     Sim.gui[
         "min_max_generators_angle"].text = f"<code>{Data.generators_angle_min:.2f} / {Data.generators_angle_max:.2f}</code>"
     # ----- generators: 60 ,  80 ,  100, 120
+    Sim.gui["color_crit_low_generators"].text = "0"
     Sim.colors["crit_low_generators"] = 0
+    Sim.gui["color_too_low_generators"].text = "60"
     Sim.colors["too_low_generators"] = 60
+    Sim.gui["color_low_generators"].text = "60"
     Sim.colors["low_generators"] = 60
+    Sim.gui["color_good_low_generators"].text = "60"
     Sim.colors["good_low_generators"] = 60
-    Sim.gui["color_good_high_generators"] = 60
+    Sim.gui["color_good_high_generators"].text = 60
     Sim.colors["good_high_generators"] = 60
-    Sim.gui["color_high_generators"] = 80
+    Sim.gui["color_high_generators"].text = "80"
     Sim.colors["high_generators"] = 80
-    Sim.gui["color_too_high_generators"] = 100
+    Sim.gui["color_too_high_generators"].text = "100"
     Sim.colors["too_high_generators"] = 100
-    Sim.gui["color_crit_high_generators"] = 120
+    Sim.gui["color_crit_high_generators"].text = "120"
     Sim.colors["crit_high_generators"] = 120
     for number in Sim.generators:
         # use loading value
@@ -2595,17 +2659,21 @@ def get_Data_min_max():
             Data.generators_max = ma
     Sim.gui["min_max_generators"].text = f"<code>{Data.generators_min:.2f} / {Data.generators_max:.2f}</code>"
     # -------- cables: 60, 80, 100, 120 ------------
+    Sim.gui["color_crit_low_cables"].text = "0"
     Sim.colors["crit_low_cables"] = 0
-    Sim.colors["too_low_cables"] = 60
-    Sim.colors["low_cables"] = 60
-    Sim.colors["good_low_cables"] = 60
-    Sim.gui["color_good_high_cables"] = 60
+    Sim.gui["color_too_low_cables"].text = "0"
+    Sim.colors["too_low_cables"] = 0
+    Sim.gui["color_low_cables"].text = "0"
+    Sim.colors["low_cables"] = 0
+    Sim.gui["color_good_low_cables"].text = "30"
+    Sim.colors["good_low_cables"] = 30
+    Sim.gui["color_good_high_cables"].text = "60"
     Sim.colors["good_high_cables"] = 60
-    Sim.gui["color_high_cables"] = 80
+    Sim.gui["color_high_cables"].text = "80"
     Sim.colors["high_cables"] = 80
-    Sim.gui["color_too_high_cables"] = 100
+    Sim.gui["color_too_high_cables"].text = "100"
     Sim.colors["too_high_cables"] = 100
-    Sim.gui["color_crit_high_cables"] = 120
+    Sim.gui["color_crit_high_cables"].text = "120"
     Sim.colors["crit_high_cables"] = 120
 
     for (number, targetlist) in Data.cables_dict.items():
@@ -2623,7 +2691,37 @@ def get_Data_min_max():
                 Data.cables_max = ma
         Sim.gui["min_max_cables"].text = f"<code>{Data.cables_min:.2f} / {Data.cables_max:.2f}</code>"
 
+    # ---- loads ----
+    # -------- cables: 0,50,100, 200, 400, 1000 ------------
+    Sim.gui["color_crit_low_loads"].text = "0"
+    Sim.colors["crit_low_loads"] = 0
+    Sim.gui["color_too_low_loads"].text = "50"
+    Sim.colors["too_low_loads"] = 50
+    Sim.gui["color_low_loads"].text = "100"
+    Sim.colors["low_loads"] = 100
+    Sim.gui["color_good_low_loads"].text = "200"
+    Sim.colors["good_low_loads"] = 200
+    Sim.gui["color_good_high_loads"].text = "400"
+    Sim.colors["good_high_loads"] = 400
+    Sim.gui["color_high_loads"].text = "600"
+    Sim.colors["high_loads"] = 600
+    Sim.gui["color_too_high_loads"].text = "800"
+    Sim.colors["too_high_loads"] = 800
+    Sim.gui["color_crit_high_loads"].text = "1000"
+    Sim.colors["crit_high_loads"] = 1000
 
+    # TODO replace with loads (p-value) data from big table
+
+    for node, (p,q) in Data.nodes_load_pq.items():
+        if Data.loads_min is None:
+            Data.loads_min = mi
+        elif mi < Data.loads_min:
+            Data.loads_min = mi
+        if Data.loads_max is None:
+            Data.loads_max = ma
+        elif ma > Data.loads_max:
+            Data.loads_max = ma
+    Sim.gui["min_max_loads"].text = f"<code>{Data.loads_min:.2f} / {Data.loads_max:.2f}</code>"
 
 
 def update_color(value, what="nodes"):
@@ -2707,6 +2805,10 @@ def update_stuff():
         cyl.radius = Sim.base["loads_r"] + p * Sim.factor["loads_r"]
         cyl.axis = vp.vector(0,Sim.base["loads_h"]+p*Sim.factor["loads_h"],0)
         Sim.letters[f"load {number}"].pos.y = cyl.axis.y
+        if Sim.dynamic_colors["loads"]:
+            cyl.color = update_color(p,"loads")
+        else:
+            cyl.color = Sim.colors["loads"]
 
     # --------- generators ----------------
     for number, cyl in Sim.generators.items():
@@ -2749,7 +2851,11 @@ def update_stuff():
 
         #print(f"loading % of Mva for generator {number}: p = {power}, q=0, mva_number= {mva_node_number} mva= {Data.mva_generators[mva_node_number]} loading is: {loading}")
         # assume that loading must be multiplied by 100 again...
-        cyl.color = update_color(loading, "generators")
+        if Sim.dynamic_colors["generators"]:
+            cyl.color = update_color(loading, "generators")
+        else:
+            cyl.color = Sim.colors["generators"]
+
 
     # -------- nodes --------
     for number, cyl in Sim.nodes.items():
@@ -2762,7 +2868,10 @@ def update_stuff():
         cyl.axis = vp.vector(0, volt * Sim.factor["nodes_h"] + Sim.base["nodes_h"], 0)
         cyl.radius = volt * Sim.factor["nodes_r"] + Sim.base["nodes_r"]
         # conditional color
-        cyl.color = update_color(volt, "nodes")
+        if Sim.dynamic_colors["nodes"]:
+            cyl.color = update_color(volt, "nodes")
+        else:
+            cyl.color = Sim.colors["nodes"]
         Sim.labels[f"node {number}"].text = f"{volt} V"
         Sim.letters[f"node {number}"].pos.y = cyl.axis.y
         #Sim.letters[f"node {number}"].pos.y = cyl.axis.y
@@ -2800,12 +2909,7 @@ def update_stuff():
                         print(f"key {i}-{j}-{k} / {j}-{k}-{i}:  both not found in Sim.arrows_ji")
                 #    oldpos = curve.point(k)["pos"]
                 #    curve.modify(k, pos=vp.vector(oldpos.x, yi+delta*k ,oldpos.z))
-
-
-
-
-
-    return # TODO remove this line
+    #return # TODO remove this line
     # ------ cables -----
     #
     for number, targetlist in Data.cables_dict.items():
@@ -2820,7 +2924,6 @@ def update_stuff():
                 continue
             loss = abs(power1 + power2)
             # TODO: mva calculation
-
 
             if (number, target) in Data.mva_cables:
                 mva_rating = Data.mva_cables[(number, target)]
@@ -2843,8 +2946,43 @@ def update_stuff():
             # mva: {(1, 2): 600, (1, 39): 1000, (2, 3): 500, (2, 25): 500, (2, 30): 900, (3, 4): 500, (3, 18): 500, (4, 5): 600, (4, 14): 500, (5, 6): 1200, (5, 8): 900, (6, 7): 900, (6, 11): 480, (6, 31): 1800, (7, 8): 900, (8, 9): 900, (9, 39): 900, (10, 11): 600, (10, 13): 600, (10, 32): 900, (12, 11): 500, (12, 13): 500, (13, 14): 600, (14, 15): 600, (15, 16): 600, (16, 17): 600, (16, 19): 600, (16, 21): 600, (16, 24): 600, (17, 18): 600, (17, 27): 600, (19, 20): 900, (19, 33): 900, (20, 34): 900, (21, 22): 900, (22, 23): 600, (22, 35): 900, (23, 24): 600, (23, 36): 900, (25, 26): 600, (25, 37): 900, (26, 27): 600, (26, 28): 600, (26, 29): 600, (28, 29): 600, (29, 38): 1200}
 
             if f"cable {number}-{target}" in Sim.labels:
+                #print(f"updating cable {number} {target}..")
                 Sim.labels[f"cable {number}-{target}"].text = f"c {number}-->{target}: {power} ({loss}) W {numtar} \nloading: {loading}"
                 # ---- new- --
+                #if (number,target) not in Sim.arrows:
+                #    continue
+                try:
+                    arrowlist = Sim.arrows[(number,target)]
+                except KeyError:
+                    continue
+                #print(number, target, "found arrowlist")
+
+                for arrow in arrowlist:
+                    if not Sim.sloped_cables:
+                        # change y value of all arrows
+                        arrow.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
+                    # change radius
+                    sw = Sim.base["cables_r"] + power * Sim.factor["cables_r"]
+                    if arrow.shaftwidth != sw:
+                        arrow.shaftwidth = Sim.base["cables_r"] + power * Sim.factor["cables_r"]
+                        arrow.headwidth = 1.15 * arrow.shaftwidth
+                    if vp.mag(arrow.axis) != Sim.base["flying_arrows_h"]:
+                        arrow.axis = vp.norm(arrow.axis) * Sim.base["flying_arrows_h"]
+                        Sim.shadows[arrow.number].axis = vp.norm(Sim.shadows[arrow.number].axis) * Sim.base["flying_arrows_h"]
+                    # dynamic color
+                    if Sim.dynamic_colors["cables"]:
+                        arrow.color = update_color(loading, "cables")
+                    else:
+                        arrow.color = Sim.colors["cables"]
+                    # flip direction?
+                    if numtar != arrow.i2j:
+                        arrow.flip_direction()
+
+    return # TODO code here
+    if True:  # remove this line
+
+
+                # --- old ---
                 for k in range(Sim.number_of_sub_cables):
                     # TODO: flexible number of sub_cables?
                     # TODO: cable_factor
