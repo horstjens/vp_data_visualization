@@ -371,7 +371,7 @@ def read_load_pq():
     with open("nodes_load_values.csv") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            Data.nodes_load_pq[int(row["Node"])] = (float(row["Load (P – MW)"]),float(row["Load (Q – Mvar)"]))
+            Data.nodes_load_pq[int(row["Node"])] = (float(row["P"]),float(row["Q"]))
     print("loaded load pq values for nodes", Data.nodes_load_pq)
 
 
