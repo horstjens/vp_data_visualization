@@ -1,4 +1,4 @@
-Node,Load (P – MW),Load (Q – Mvar)
+Node,P,Q
 3,322,2.4
 4,500,184
 7,233.8,84
