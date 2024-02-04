@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.25.0"
+VERSION = "0.25.1"
 
 
 """
@@ -96,6 +96,7 @@ class Data:
     geo = {} # geo location. format: node_number : (latitude, longitude, is_generator, is_load),
 
 class Sim:
+    test_arrow = None
     canvas_width = 1200
     canvas_height = 800
     mode = "arrange"
@@ -991,6 +992,60 @@ def widget_func_cables_base_r(b):
     Sim.base["cables_r"] = b.number
     update_stuff()
 
+def widget_func_camera_north(b):
+    Sim.scene.camera.pos.z -= 0.25
+    print(Sim.scene.camera.pos)
+
+def widget_func_camera_NS(b):
+    Sim.scene.center.z = b.value
+    Sim.gui["camera_NS"].text = f"{Sim.scene.center.z:.2f}"
+
+def widget_func_camera_WE(b):
+    Sim.scene.center.x = b.value
+    Sim.gui["camera_WE"].text = f"{Sim.scene.center.x:.2f}"
+
+
+def widget_func_camera_pitch(b):
+    Sim.gui["camera_pitch"].text = f"{b.value:.2f}"
+    old_center = Sim.scene.center
+    ###angle_now = vp.degrees(vp.diff_angle(Sim.test_arrow.axis, vp.vector(0,0,1)))
+    angle_now = vp.degrees(vp.diff_angle(vp.vector(0,Sim.scene.forward.y, Sim.scene.forward.z), vp.vector(0,0,1)))
+    #print("angle now:", angle_now)
+    delta = angle_now - b.value
+    #print("delta:", delta)
+    ###Sim.test_arrow.rotate(angle=-delta/100, axis=vp.vector(1,0,0))
+    #Sim.scene.camera.axis = vp.vector(0,-1,0)
+    Sim.scene.camera.rotate(angle=vp.radians(-delta), axis=vp.cross(Sim.scene.forward, Sim.scene.up))
+    Sim.scene.center = old_center
+
+def widget_func_camera_cw(b):
+    old_center = Sim.scene.center
+    Sim.scene.camera.rotate(angle=vp.radians(1), axis=vp.vector(0, 1, 0))
+    angle_now = vp.degrees(vp.diff_angle(vp.vector(Sim.scene.forward.x, 0, Sim.scene.forward.z), vp.vector(0, 0, 1)))
+    Sim.gui["camera_angle"].text = f"{angle_now:.2f}"
+    Sim.scene.center = old_center
+def widget_func_camera_ccw(b):
+    old_center = Sim.scene.center
+    Sim.scene.camera.rotate(angle=vp.radians(-1), axis=vp.vector(0, 1, 0))
+    angle_now = vp.degrees(vp.diff_angle(vp.vector(Sim.scene.forward.x, 0, Sim.scene.forward.z), vp.vector(0, 0, 1)))
+    Sim.gui["camera_angle"].text = f"{angle_now:.2f}"
+    Sim.scene.center = old_center
+
+def widget_func_camera_angle(b):
+    #TODO works bad
+    Sim.gui["camera_angle"].text = f"{b.value:.2f}"
+    old_center = Sim.scene.center
+    ###angle_now = vp.degrees(vp.diff_angle(Sim.test_arrow.axis, vp.vector(0,0,1)))
+    angle_now = vp.degrees(vp.diff_angle(vp.vector(Sim.scene.forward.x, 0, Sim.scene.forward.z), vp.vector(0,0,1)))
+    print("angle now:", angle_now)
+    delta = 180 - b.value - angle_now
+    print("delta:", delta)
+    ###Sim.test_arrow.rotate(angle=-delta/100, axis=vp.vector(1,0,0))
+    #Sim.scene.camera.axis = vp.vector(0,-1,0)
+    Sim.scene.camera.rotate(angle=vp.radians(delta)/100, axis=vp.vector(0,1,0))
+    Sim.scene.center = old_center
+
+
 def widget_func_camera1(b):
     """reset camera to start position"""
     camera_to_topdown()
@@ -1018,15 +1073,6 @@ def widget_func_camera4(b):
     Sim.scene.range = Sim.camera4["range"]
     Sim.scene.center = Sim.camera4["center"]
 
-def widget_func_camera_pitch(b):
-    #TODO: rotate arrow to check if it works
-    Sim.gui["camera_pitch"].text = f"{b.value:.2f}"
-    old_center = Sim.scene.center
-    angle_now = vp.degrees(vp.diff_angle(Sim.scene.forward, vp.vector(0,0,1)))
-    delta = b.value - angle_now
-    #Sim.scene.camera.axis = vp.vector(0,-1,0)
-    Sim.scene.camera.rotate(angle=vp.radians(delta), axis=vp.cross(Sim.scene.forward, Sim.scene.up))
-    Sim.scene.center = old_center
 
 def widget_func_save_camera2(b):
     Sim.camera2 = {"pos": Sim.scene.camera.pos,
@@ -1845,10 +1891,9 @@ def create_widgets():
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["box_dynamic_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=Sim.dynamic_colors["cables"],
                                                 bind=widget_func_toggle_dynamic_cables)
-    #Sim.scene.append_to_caption("<code>      |  </code>camera pitch: ")
-    #Sim.gui["camera_pitch"] = vp.wtext(pos=Sim.scene.caption_anchor, text=f"{Sim.camera_pitch:.2f}")
-    #Sim.gui["camera_pitch_slider"] = vp.slider(pos=Sim.scene.caption_anchor, bind=widget_func_camera_pitch, min=-90, max=0, value=-90 )
-
+    Sim.scene.append_to_caption("<code>      |  </code>camera pitch: ")
+    Sim.gui["camera_pitch"] = vp.wtext(pos=Sim.scene.caption_anchor, text=f"{Sim.camera_pitch:.2f}")
+    Sim.gui["camera_pitch_slider"] = vp.slider(pos=Sim.scene.caption_anchor, bind=widget_func_camera_pitch, min=90, max=180, value=90, length=300)
     Sim.scene.append_to_caption("\n")
     # ------------------------------------------------------------
     #Sim.scene.append_to_caption("<code>Losses:      | </code>")
@@ -1886,7 +1931,23 @@ def create_widgets():
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["box_dynamic_generators"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=Sim.dynamic_colors["generators"],
                                                     bind=widget_func_toggle_dynamic_generators)
-    Sim.scene.append_to_caption("<code>      | </code>\n")
+    #Sim.scene.append_to_caption("<code>      | </code>\n")
+
+    ##x1, z1, x2, z2 = bounding_box[0], bounding_box[1], bounding_box[2], bounding_box[3]
+    ##middle = (x1 + abs(x1 - x2) / 2, z1 + abs(z1 - z2) / 2)
+
+    #Sim.scene.append_to_caption("<code>      |  </code>north/south: ")
+    #Sim.gui["camera_NS"] = vp.wtext(pos=Sim.scene.caption_anchor, text=f"{Sim.scene.center.z:.2f}")
+    #vp.button(pos=Sim.scene.caption_anchor, text="north", bind=widget_func_camera_north)
+    #Sim.gui["camera_NS_slider"] = vp.slider(pos=Sim.scene.caption_anchor, bind=widget_func_camera_NS, min=Sim.z1, max=Sim.z2, value=Sim.middle[1], length=150)
+    #Sim.scene.append_to_caption("west/east: ")
+    #Sim.gui["camera_WE"] = vp.wtext(pos=Sim.scene.caption_anchor, text=f"{Sim.scene.center.x:.2f}")
+    #Sim.gui["camera_WE_slider"] = vp.slider(pos=Sim.scene.caption_anchor, bind=widget_func_camera_WE, min=Sim.x1,
+    #                                        max=Sim.x2, value=Sim.middle[0], length=150)
+
+
+    Sim.scene.append_to_caption("\n")
+
     #-------------------------------------------------------
     Sim.scene.append_to_caption("<code>Loads:       | </code>")
     Sim.gui["box_loads"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
@@ -1915,7 +1976,13 @@ def create_widgets():
     Sim.scene.append_to_caption("<code>      | </code>")
     Sim.gui["box_dynamic_loads"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="", checked=Sim.dynamic_colors["loads"],
                                                     bind=widget_func_toggle_dynamic_loads)
-    Sim.scene.append_to_caption("<code>      | </code>\n")
+    Sim.scene.append_to_caption("<code>      |  </code>camera angle: ")
+    Sim.gui["camera_angle"] = vp.wtext(pos=Sim.scene.caption_anchor, text=f"{Sim.camera_pitch:.2f}")
+    #Sim.gui["camera_angle_slider"] = vp.slider(pos=Sim.scene.caption_anchor, bind=widget_func_camera_angle, min=-180, max=180, value=0, length=300)
+    Sim.gui["button_cw"] = vp.button(pos=Sim.scene.caption_anchor, text="rotate clockwise", bind=widget_func_camera_cw)
+    Sim.gui["button_ccw"] = vp.button(pos=Sim.scene.caption_anchor, text="rotate couter clockwise", bind=widget_func_camera_ccw)
+    Sim.scene.append_to_caption("\n")
+    #Sim.scene.append_to_caption("<code>      | </code>\n")
     #---------------------------------------------
     # -- - - -- -- - - - -
     Sim.scene.append_to_caption("\nToggle:\n ")
@@ -2436,6 +2503,7 @@ def mouse_move():
 
 def create_stuff():
     # axis arrows with letters
+    ### Sim.test_arrow = vp.arrow(pos=Sim.center + vp.vector(0,1,0), axis=vp.vector(0,-1,0), color=vp.color.black)
     vp.arrow(pos=Sim.center, axis=vp.vector(0.1, 0, 0), color=vp.color.red, pickable=False)
     vp.arrow(pos=Sim.center, axis=vp.vector(0, 0.1, 0), color=vp.color.green, pickable=False)
     vp.arrow(pos=Sim.center, axis=vp.vector(0, 0, 0.1), color=vp.color.blue, pickable=False)
