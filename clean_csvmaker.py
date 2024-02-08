@@ -151,7 +151,7 @@ for col_name in col_names:
         pos1 = col_name.find("_TO_")
         from_node_number = int(col_name[5:pos1])
         to_node_number = int(col_name[pos1+4:])
-        # Data.df[new_name] = Data.df.apply(lambda row: max(row[colname1],row[colname2]) / mva * 100, axis=1)
+
         powers = []
         loadings = []
         flows = []
@@ -169,7 +169,8 @@ for col_name in col_names:
                 flow = -1
                 power = power_b_to_a
                 q = df_raw.iloc[line][f"VARS_{to_node_number}_TO_{from_node_number}"]
-            percent_of_mva_value = (power**2 + q**2) ** 0.5 * 100 * 100 / cable_mva[(from_node_number, to_node_number)]
+            # Data.df[new_name] = Data.df.apply(lambda row: max(row[colname1],row[colname2]) / mva * 100, axis=1)
+            percent_of_mva_value = (power**2 + q**2) ** 0.5 * 100  / cable_mva[(from_node_number, to_node_number)]
             powers.append(power)
             loadings.append(percent_of_mva_value)
             flows.append(flow)
