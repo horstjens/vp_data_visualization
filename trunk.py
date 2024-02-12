@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.26.1"
+VERSION = "0.26.2"
 
 
 """
@@ -347,9 +347,76 @@ class Sim:
     arrows_number = 0
     arrows = {} # (i,j)
     shadows = {}
+    generator_arrows = {}
+    load_arrows = {}
     arrows_speed = 0.02
     arrows_speed_min = 0.02
     arrows_speed_max = 0.08
+
+
+class FlyingArrowToLoad(vp.arrow):
+    """flying from Generator to attached Node"""
+    def __init__(self, load_number, **kwargs):
+        super().__init__(**kwargs)
+        self.load_number = load_number
+        self.number = Sim.arrows_number
+        Sim.load_arrows[self.number] = self
+        Sim.arrows_number += 1
+        #self.curve = Sim.load_lines[load_number] # curve is laying on floor
+        #self.node_number = Sim.generators[gen_number].node_number
+        self.node_number = load_number
+        self.node = Sim.nodes[self.node_number]
+        self.load = Sim.loads[self.node_number]
+        self.axis = vp.norm( Sim.loads[self.node_number].pos - Sim.nodes[self.node_number].pos) * Sim.base["flying_arrows_length"]
+        Sim.shadows[self.number] = vp.arrow(color=vp.color.gray(0.1), pos=vp.vector(self.pos.x, 0, self.pos.z),
+                                            axis=vp.vector(self.axis.x, 0, self.axis.z))
+        Sim.shadows[self.number].axis = self.axis
+
+    def update(self, dt): # TODO hier weitermachen, gen->load
+        # always have the same y pos as the connected Node
+        new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
+        pos0 = vp.vector(new_pos.x, 0, new_pos.z)
+        #self.pos0 = vp.vector(self.pos.x,0, self.pos.z)
+        if vp.mag(pos0 - self.node.pos) > vp.mag(self.load.pos-self.node.pos):
+            new_pos = self.node.pos + vp.norm(self.axis) * (vp.mag(pos0 - self.node.pos) - vp.mag(self.load.pos-self.node.pos))
+            #self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
+        self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
+        # update shadow
+        Sim.shadows[self.number].pos = vp.vector(new_pos.x, 0, new_pos.z)
+
+class FlyingArrowFromGenerator(vp.arrow):
+    """flying from Generator to attached Node"""
+    def __init__(self, gen_number, **kwargs):
+        super().__init__(**kwargs)
+        self.gen_number = gen_number
+        self.number = Sim.arrows_number
+        Sim.generator_arrows[self.number] = self
+        Sim.arrows_number += 1
+        #self.curve = Sim.generator_lines[gen_number] # curve is laying on floor
+        self.node_number = Sim.generators[gen_number].node_number
+        self.node = Sim.nodes[self.node_number]
+        self.generator = Sim.generators[self.gen_number]
+        self.axis = vp.norm(Sim.nodes[self.node_number].pos - Sim.generators[self.gen_number].pos) * Sim.base["flying_arrows_length"]
+        Sim.shadows[self.number] = vp.arrow(color=vp.color.gray(0.1), pos=vp.vector(self.pos.x, 0, self.pos.z),
+                                            axis=vp.vector(self.axis.x, 0, self.axis.z))
+        Sim.shadows[self.number].axis = self.axis
+
+    def update(self, dt):
+        # always have the same y pos as the connected Node
+
+
+        new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
+        pos0 = vp.vector(new_pos.x, 0, new_pos.z)
+        #self.pos0 = vp.vector(self.pos.x,0, self.pos.z)
+        if vp.mag(pos0-self.generator.pos) > vp.mag(self.node.pos - self.generator.pos):
+            new_pos = self.generator.pos + vp.norm(self.axis) * (vp.mag(pos0-self.generator.pos) - vp.mag(self.node.pos-self.generator.pos))
+            #self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
+        self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
+        # update shadow
+        Sim.shadows[self.number].pos = vp.vector(new_pos.x, 0, new_pos.z)
+
+
+
 
 
 class FlyingArrow(vp.arrow):
@@ -1257,6 +1324,25 @@ def widget_func_start_simulation(b):
             delta = vp.mag(startpos-pos) - vp.mag(pos2-pos)
             #vp.label(text=f"{k}", pos=pos, color=vp.color.white, box=False, opacity=0)
     #  --- end flying arrows
+
+    # --- start flying angles from generator to node ---
+    for gen_number, node_number in Data.generators.items():
+        generator = Sim.generators[gen_number]
+        node = Sim.nodes[node_number]
+        startpos = vp.vector(generator.pos.x, generator.pos.y, generator.pos.z)
+        while vp.mag(startpos - generator.pos) < vp.mag(node.pos - generator.pos):
+            f = FlyingArrowFromGenerator(gen_number, pos=startpos, color=vp.color.yellow)
+            startpos += vp.norm(f.axis) * Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
+
+    # ---- start flying angles from node to load ------
+    for node_number in Data.loads:  # it's a list because node_number == load_number
+        load = Sim.loads[node_number]
+        node = Sim.nodes[node_number]
+        startpos = vp.vector(node.pos.x, node.pos.y, node.pos.z)
+        while vp.mag(startpos-node.pos) < vp.mag(node.pos - load.pos):
+            f = FlyingArrowToLoad(node_number, pos=startpos, color=vp.color.purple)
+            startpos += vp.norm(f.axis) * Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
+
 
 
 def layout_save():  # not a button anymore, therefore no parameter b. function get executed by widget_func_start_simulation()
@@ -3199,6 +3285,10 @@ def main():
             for (i,j), arrowlist in Sim.arrows.items():
                 for arrow in arrowlist:
                     arrow.update(Sim.dt)
+            for number, arrow in Sim.generator_arrows.items():
+                arrow.update(Sim.dt)
+            for number, arrow in Sim.load_arrows.items():
+                arrow.update(Sim.dt)
 
 
 if __name__ == "__main__":
