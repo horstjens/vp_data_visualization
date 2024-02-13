@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.26.3"
+VERSION = "0.27.0"
 
 
 """
@@ -326,6 +326,7 @@ class Sim:
     nodes = {}
     cables = {}  # direct connections (gold), only visible when in arrange mode
     cables_middle = {} # point exactly between 2 nodes. to display pie chart and label. can be moved by mouse! (attached to sub-node?)
+    cablepower = {}  # (i,j):power
     loads = {}   # consumer of energy
     generators = {}
     pointer0 = {}  # to display angle at each generator
@@ -351,7 +352,7 @@ class Sim:
     load_arrows = {}
     arrows_speed = 0.02
     arrows_speed_min = 0.02
-    arrows_speed_max = 0.08
+    arrows_speed_max = 0.25
 
 
 class FlyingArrowToLoad(vp.arrow):
@@ -371,10 +372,19 @@ class FlyingArrowToLoad(vp.arrow):
         Sim.shadows[self.number] = vp.arrow(color=vp.color.gray(0.1), pos=vp.vector(self.pos.x, 0, self.pos.z),
                                             axis=vp.vector(self.axis.x, 0, self.axis.z))
         Sim.shadows[self.number].axis = self.axis
+        self.delta100 = Data.nodes_max - Data.nodes_min
 
-    def update(self, dt): # TODO hier weitermachen, gen->load
+    def update(self, dt):
+        try:
+            deltap = self.load.power - Data.loads_min
+        except AttributeError:
+            return
+        speedpercent = deltap / self.delta100
+        speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max - Sim.arrows_speed_min)
+
         # always have the same y pos as the connected Node
-        new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
+        #new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
+        new_pos = self.pos + vp.norm(self.axis) * speed * dt
         pos0 = vp.vector(new_pos.x, 0, new_pos.z)
         #self.pos0 = vp.vector(self.pos.x,0, self.pos.z)
         if vp.mag(pos0 - self.node.pos) > vp.mag(self.load.pos-self.node.pos):
@@ -400,12 +410,15 @@ class FlyingArrowFromGenerator(vp.arrow):
         Sim.shadows[self.number] = vp.arrow(color=vp.color.gray(0.1), pos=vp.vector(self.pos.x, 0, self.pos.z),
                                             axis=vp.vector(self.axis.x, 0, self.axis.z))
         Sim.shadows[self.number].axis = self.axis
+        self.delta100 = Data.generators_power_max - Data.generators_power_min
 
     def update(self, dt):
         # always have the same y pos as the connected Node
-
-
-        new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
+        deltap = self.generator.power - Data.generators_power_min
+        speedpercent = deltap / self.delta100
+        speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max-Sim.arrows_speed_min)
+        #new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
+        new_pos = self.pos + vp.norm(self.axis) * speed * dt
         pos0 = vp.vector(new_pos.x, 0, new_pos.z)
         #self.pos0 = vp.vector(self.pos.x,0, self.pos.z)
         if vp.mag(pos0-self.generator.pos) > vp.mag(self.node.pos - self.generator.pos):
@@ -450,6 +463,7 @@ class FlyingArrow(vp.arrow):
         # create shadow arrow
         Sim.shadows[self.number] = vp.arrow(color=vp.color.gray(0.1), pos=vp.vector(self.pos.x, 0, self.pos.z),
                                             axis=vp.vector(self.axis.x, 0, self.axis.z))
+        self.delta100 = Data.cables_power_max - Data.cables_power_min
 
     def new_k2(self):
         if self.i2j:
@@ -490,7 +504,15 @@ class FlyingArrow(vp.arrow):
 
     def update(self, dt):
         save_y = self.pos.y
-        new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
+
+        deltap = Sim.cablepower[(self.i, self.j)] - Data.cables_power_min
+        speedpercent = deltap / self.delta100
+        speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max-Sim.arrows_speed_min)
+
+
+        
+        #new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
+        new_pos = self.pos + vp.norm(self.axis) * speed * dt
         self.pos = new_pos
         self.pos0 = vp.vector(new_pos.x, 0, new_pos.z)
         #print("newpos:",self.i,self.j, self.pos)
@@ -2154,10 +2176,10 @@ def create_widgets():
                                                 text=f"{Sim.base['flying_arrows_length']}",
                                                 type="numeric", width=50, bind=widget_func_flying_arrows_length)
     Sim.scene.append_to_caption(" | speed (min): ")
-    Sim.gui["flying_arrows_speed_min"] = vp.winput(pos=Sim.scene.caption_anchor, text=f"{Sim.arrows_speed}",
+    Sim.gui["flying_arrows_speed_min"] = vp.winput(pos=Sim.scene.caption_anchor, text=f"{Sim.arrows_speed_min}",
                                                type="numeric", width=50, bind=widget_func_flying_arrows_speed_min)
     Sim.scene.append_to_caption(" | speed (max): ")
-    Sim.gui["flying_arrows_speed_max"] = vp.winput(pos=Sim.scene.caption_anchor, text=f"{Sim.arrows_speed}",
+    Sim.gui["flying_arrows_speed_max"] = vp.winput(pos=Sim.scene.caption_anchor, text=f"{Sim.arrows_speed_max}",
                                                    type="numeric", width=50, bind=widget_func_flying_arrows_speed_max)
 
     Sim.scene.append_to_caption("\n")
@@ -3074,6 +3096,7 @@ def update_stuff():
             continue
             #print("i skip this")
             #print(p, Sim.base["loads_r"], Sim.factor["loads_r"])
+        cyl.power = p
         cyl.radius = Sim.base["loads_r"] + p * Sim.factor["loads_r"]
         cyl.axis = vp.vector(0,Sim.base["loads_h"]+p*Sim.factor["loads_h"],0)
         Sim.letters[f"load {number}"].pos.y = cyl.axis.y
@@ -3095,6 +3118,7 @@ def update_stuff():
         #        f"KeyError: could not find power / angle value in line {Sim.i} for columns {col_name_power(number)} / {col_name_angle(number)}")
         #    continue
         power = Data.df[f"generator_power_{number}"][Sim.i]
+        cyl.power = power
         loading = Data.df[f"generator_loading_{number}"][Sim.i]
         g_angle = Data.df[f"generator_angle_{number}"][Sim.i]
         cyl.axis = vp.vector(0, power * Sim.factor["generators_h"] + Sim.base["generators_h"], 0)
@@ -3188,6 +3212,7 @@ def update_stuff():
             #    print("could not find mva_rating (cables) for", number, target)
             #    continue
             power = Data.df[f"cable_power_{number}_{target}"][Sim.i]
+            Sim.cablepower[(number, target)] = power # for speed of floating arrow
             loss = Data.df[f"cable_loss_{number}_{target}"][Sim.i]
             loading = Data.df[f"cable_loading_{number}_{target}"][Sim.i]
             flow = Data.df[f"cable_flow_{number}_{target}"][Sim.i]
