@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.26.2"
+VERSION = "0.26.3"
 
 
 """
@@ -1444,8 +1444,15 @@ def layout_load():
                 Sim.nodes[number].pos = npos
                 Sim.letters[f"node {number}"].pos = npos #+ Sim.nodes[number].axis + vp.vector(0, 1, 0)
                 Sim.labels[f"node {number}"].pos = npos
-                if number in Sim.generator_lines:
-                    Sim.generator_lines[number].modify(0, npos)
+                # node has attached generator?
+                ###Data.generators = {}  # gen_number: node_number
+                ###Data.nodes = {node_number: (x,z,gen_number,load_number)
+                if number in Data.generators.values():
+                    gen_number = Data.nodes[number][2]
+
+
+                #if number in Sim.generator_lines:
+                    Sim.generator_lines[gen_number].modify(0, npos)
                 if number in Sim.load_lines:
                     Sim.load_lines[number].modify(0, npos)
                 for (i, j), curve in Sim.cables.items():
@@ -3302,7 +3309,7 @@ if __name__ == "__main__":
     #print("bounding_box:", Sim.bounding_box)
     #print("middle:", Sim.middle)
 
-    #layout_load()
+    layout_load()
     create_widgets()
     get_Data_min_max()
     main()
