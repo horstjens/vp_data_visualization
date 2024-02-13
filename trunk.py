@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.27.1"
+VERSION = "0.28.0"
 
 
 """
@@ -330,6 +330,8 @@ class Sim:
     tubes_radius_factor = 1.0
     tubes_radius_delta = 0.0
     tubes_opacity = 0.15
+    sub_cable_pointlist = {} # {(i,j):[p,p,p...],}
+    sub_cable_lengthlist = {} # {(i,j):[l,l,l...],}
     # --- vpython objects -----
     tubes_node = {} # {(i,j):cylinder,}
     tubes_load = {} # {node_number:cylinder,}
@@ -468,16 +470,18 @@ class FlyingArrow(vp.arrow):
         self.k = k # sub-cable point where arrow is starting from
         self.k2 = None # sub-cable point where arrow is traveling to
         self.i2j = i2j # bool # direction of power flow: True if power flows from node i toward node j. otherwise False
-        curve = Sim.sub_cables[(i,j)]
-        self.pointlist = [d["pos"] for d in curve.slice(0, curve.npoints)] # curve is lying on the floor
-        total_length = 0
-        self.length_list = []
-        for k, pos in enumerate(self.pointlist):
-            if k == 0:
-                self.length_list.append(0)
-            else:
-                total_length += vp.mag(self.pointlist[k]-self.pointlist[k-1])
-                self.length_list.append(total_length)
+        #curve = Sim.sub_cables[(i,j)]
+        #self.pointlist = [d["pos"] for d in curve.slice(0, curve.npoints)] # curve is lying on the floor
+        self.pointlist = Sim.sub_cable_pointlist[(i,j)]
+        #total_length = 0
+        #self.length_list = []
+        #for k, pos in enumerate(self.pointlist):
+        #    if k == 0:
+        #        self.length_list.append(0)
+        #    else:
+        #        total_length += vp.mag(self.pointlist[k]-self.pointlist[k-1])
+        #        self.length_list.append(total_length)
+        self.length_list = Sim.sub_cable_lengthlist[(i,j)]
         self.new_k2()
         self.pos2 = self.pointlist[self.k2]
         self.axis = vp.norm(self.pos2-self.pos) * Sim.base["flying_arrows_length"]
@@ -1047,12 +1051,12 @@ def widget_func_toggle_cable_shadow(b):
         #        shadow.visible = b.checked
 
 
-def widget_func_toggle_losses(b):
-    """toggles loss rectangles for cables"""
-    for (i, j) in Sim.cables:
-        if (i, j) in Sim.mini_losses:
-            for n, loss_arrow in Sim.mini_losses[(i, j)].items():
-                loss_arrow.visible = b.checked
+#def widget_func_toggle_losses(b):
+#    """toggles loss rectangles for cables"""
+#    for (i, j) in Sim.cables:
+#        if (i, j) in Sim.mini_losses:
+#            for n, loss_arrow in Sim.mini_losses[(i, j)].items():
+#                loss_arrow.visible = b.checked
 
 
 def widget_func_toggle_grid(b):
@@ -1061,10 +1065,10 @@ def widget_func_toggle_grid(b):
         line.visible = b.checked
 
 
-def widget_func_toggle_letters(b):
-    """toggle billboard letters"""
-    for bb in Sim.letters.values():
-        bb.visible = b.checked
+#def widget_func_toggle_letters(b):
+#    """toggle billboard letters"""
+#    for bb in Sim.letters.values():
+#        bb.visible = b.checked
 
 
 def widget_func_toggle_sloped_cables(b):
@@ -1351,6 +1355,7 @@ def widget_func_start_simulation(b):
     for d in (Sim.cables, Sim.sub_nodes):  # dictionaries # Sim.sub_cables
         for o in d.values():
             o.visible = False
+
     # turn all pink sub-cables into black shadows
     Sim.shortest_subcable = None
     for (i,j), curve in Sim.sub_cables.items():
@@ -1365,6 +1370,20 @@ def widget_func_start_simulation(b):
                 Sim.shortest_subcable = distance
     Sim.gui["bottomtext1"].text += f"shortest subcable length: {Sim.shortest_subcable}\n"
 
+    # calculate pointlist and lengthlist for each sub-cable
+    for (i,j), curve in Sim.sub_cables.items():
+        #curve = Sim.sub_cables[(i, j)]
+        pointlist = [d["pos"] for d in curve.slice(0, curve.npoints)]  # curve is lying on the floor
+        total_length = 0
+        length_list = []
+        for k, pos in enumerate(pointlist):
+            if k == 0:
+                length_list.append(0)
+            else:
+                total_length += vp.mag(pointlist[k] - pointlist[k - 1])
+                length_list.append(total_length)
+        Sim.sub_cable_pointlist[(i,j)] = pointlist
+        Sim.sub_cable_lengthlist[(i,j)] = length_list
 
     # update Sim.flying_arrows_length if necessary
     if Sim.base["flying_arrows_length"] < Sim.shortest_subcable:
@@ -3182,12 +3201,12 @@ def update_stuff():
             continue
             #print("i skip this")
             #print(p, Sim.base["loads_r"], Sim.factor["loads_r"])
-
+        #print(Sim.tubes_load)
         tube = Sim.tubes_load[number]
         if not Sim.sloped_cables:
             tube.pos.y = Sim.base["cables_h"] + p * Sim.factor["cables_h"]
         else:
-            pass  # TODO sloped cables !!
+            tube.pos.y = Sim.nodes[number].axis.y
 
         cyl.power = p
         cyl.radius = Sim.base["loads_r"] + p * Sim.factor["loads_r"]
@@ -3216,7 +3235,7 @@ def update_stuff():
         if not Sim.sloped_cables:
             tube.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
         else:
-            pass # TODO sloped cables !!
+            tube.pos.y = Sim.nodes[cyl.node_number].axis.y
 
 
         cyl.power = power
@@ -3319,11 +3338,23 @@ def update_stuff():
             flow = Data.df[f"cable_flow_{number}_{target}"][Sim.i]
             numtar = True if flow == 1 else False
             tubelist = Sim.tubes_node[(number, target)]
-            for tube in tubelist:
+            deltay = Sim.nodes[number].axis.y - Sim.nodes[target].axis.y
+            total_length = Sim.sub_cable_lengthlist[(number,target)][-1]
+            old_y = Sim.nodes[number].axis.y
+
+            for nr, tube in enumerate(tubelist):
                 if not Sim.sloped_cables:
                     tube.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
                 else:
-                    pass # TODO sloped cables!!!!!
+                    #pass # TODO sloped cables!!!!!
+                    #if nr == len(tubelist)-1:
+                    #    continue
+                    length = Sim.sub_cable_lengthlist[(number,target)][nr+1]
+                    tube.pos.y = old_y
+                    #tube.axis.y = Sim.nodes[number].axis.y + length / total_length * deltay
+                    tube.axis.y = 0 + length / total_length * deltay
+                    oldy = tube.axis.y
+
 
 
             ##numtar = all((power1 > 0, power2 < 0))  # True if flow from number to target
