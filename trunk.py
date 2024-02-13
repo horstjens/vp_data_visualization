@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.27.0"
+VERSION = "0.27.1"
 
 
 """
@@ -203,6 +203,10 @@ class Data:
     #geo = {} # geo location. format: node_number : (latitude, longitude, is_generator, is_load),
 
 class Sim:
+    axis_x = None
+    axis_y = None
+    axis_z = None
+    flying_while_paused = False # arrows fly also in pause mode
     test_arrow = None
     canvas_width = 1200
     canvas_height = 800
@@ -220,6 +224,7 @@ class Sim:
     center = vp.vector(middle[0], 0, middle[1])
     grid_max_x = abs(x1-x2)
     grid_max_z = abs(z1-z2)
+
 
     # glider_number = 1
     selected_object = None
@@ -261,6 +266,7 @@ class Sim:
               "pointer0": vp.color.orange,
               "pointer1": vp.color.red,
               "generator_lines": vp.color.gray(0.25),
+              "load_lines": vp.color.gray(0.25),
               "losses": vp.color.red,
               "middles": vp.color.gray(0.75)
               }
@@ -310,7 +316,7 @@ class Sim:
     #    # "nodes": os.path.join("energy1.png"),
     #    #"map": os.path.join("assets", "map002.png"),
     #}
-    animation_duration = 20  # seconds
+    animation_duration = 2000  # seconds
     frame_duration = animation_duration / len(Data.df)
     # mini_arrow_length = 2
     # mini_arrow_base1 = 1
@@ -321,7 +327,13 @@ class Sim:
     # cursor = vp.cylinder(radius = 1, color=vp.color.white, pos = vp.vector(0,0,0), axis=vp.vector(0,0.2,0),
     # opacity=0.5, pickable=False)
     sloped_cables = False   # cables are sloped depending on the height of the connected node cylinders
+    tubes_radius_factor = 1.0
+    tubes_radius_delta = 0.0
+    tubes_opacity = 0.15
     # --- vpython objects -----
+    tubes_node = {} # {(i,j):cylinder,}
+    tubes_load = {} # {node_number:cylinder,}
+    tubes_generator = {} # {generator_number:cylinder,}
     grid = []
     nodes = {}
     cables = {}  # direct connections (gold), only visible when in arrange mode
@@ -390,7 +402,13 @@ class FlyingArrowToLoad(vp.arrow):
         if vp.mag(pos0 - self.node.pos) > vp.mag(self.load.pos-self.node.pos):
             new_pos = self.node.pos + vp.norm(self.axis) * (vp.mag(pos0 - self.node.pos) - vp.mag(self.load.pos-self.node.pos))
             #self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
-        self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
+        #self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
+        if Sim.sloped_cables:
+            self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
+        else:
+            power = Data.df[f"load_power_{self.load_number}"][Sim.i]
+            y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
+            self.pos = vp.vector(new_pos.x, y, new_pos.z)
         # update shadow
         Sim.shadows[self.number].pos = vp.vector(new_pos.x, 0, new_pos.z)
 
@@ -414,7 +432,10 @@ class FlyingArrowFromGenerator(vp.arrow):
 
     def update(self, dt):
         # always have the same y pos as the connected Node
-        deltap = self.generator.power - Data.generators_power_min
+        try:
+            deltap = self.generator.power - Data.generators_power_min
+        except:
+            return
         speedpercent = deltap / self.delta100
         speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max-Sim.arrows_speed_min)
         #new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
@@ -424,7 +445,12 @@ class FlyingArrowFromGenerator(vp.arrow):
         if vp.mag(pos0-self.generator.pos) > vp.mag(self.node.pos - self.generator.pos):
             new_pos = self.generator.pos + vp.norm(self.axis) * (vp.mag(pos0-self.generator.pos) - vp.mag(self.node.pos-self.generator.pos))
             #self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
-        self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
+        if Sim.sloped_cables:
+            self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
+        else:
+            power = Data.df[f"generator_power_{self.gen_number}"][Sim.i]
+            y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
+            self.pos = vp.vector(new_pos.x, y, new_pos.z)
         # update shadow
         Sim.shadows[self.number].pos = vp.vector(new_pos.x, 0, new_pos.z)
 
@@ -504,13 +530,15 @@ class FlyingArrow(vp.arrow):
 
     def update(self, dt):
         save_y = self.pos.y
-
-        deltap = Sim.cablepower[(self.i, self.j)] - Data.cables_power_min
+        try:
+            deltap = Sim.cablepower[(self.i, self.j)] - Data.cables_power_min
+        except:
+            return
         speedpercent = deltap / self.delta100
         speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max-Sim.arrows_speed_min)
 
 
-        
+
         #new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
         new_pos = self.pos + vp.norm(self.axis) * speed * dt
         self.pos = new_pos
@@ -678,7 +706,7 @@ def widget_func_restart(b):
     Sim.gui["play"].text = "Play >"
     Sim.i = 0
     Sim.gui["frameslider"].value = 0
-    Sim.gui["label_frame"].text = str(0)
+    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
 
 
 def widget_func_step_back(b):
@@ -688,7 +716,7 @@ def widget_func_step_back(b):
     if Sim.i > 0:
         Sim.i -= 1
         Sim.gui["frameslider"].value = Sim.i
-        Sim.gui["label_frame"].text = str(Sim.i)
+        Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
         print("now at Step", Sim.i)
         update_stuff()
     else:
@@ -703,7 +731,7 @@ def widget_func_step_forward(b):
     if Sim.i < len(Data.df):
         Sim.i += 1
         Sim.gui["frameslider"].value = Sim.i
-        Sim.gui["label_frame"].text = str(Sim.i )
+        Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
         print("now at Step", Sim.i)
         update_stuff()
     else:
@@ -717,7 +745,7 @@ def widget_func_end(b):
     Sim.gui["play"].text = "Play >"
     Sim.i = len(Data.df)
     Sim.gui["frameslider"].value = len(Data.df)
-    Sim.gui["label_frame"].text = str(len(Data.df))
+    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
 
 
 def widget_func_play(b):
@@ -731,12 +759,24 @@ def widget_func_play(b):
         Sim.gui["play"].text = "Play >"
 
 
+def widget_func_tube_opacity(b):
+    Sim.tubes_opacity = b.value
+    Sim.gui["tube_opacity"].text = f"{Sim.tubes_opacity:.2f}"
+    for (i,j), tubelist in Sim.tubes_node.items():
+        for tube in tubelist:
+            tube.opacity = b.value
+    for tube in Sim.tubes_load.values():
+        tube.opacity = b.value
+    for tube in Sim.tubes_generator.values():
+        tube.opacity = b.value
+
 def widget_func_time_slider(b):
     """jump to a specific frame in the dataset """
     # print("slider is set to ", b.value)
     # Sim.connAB.pos.y = power_ab[b.value]
-    Sim.gui["label_frame"].text = str(b.value)
+    #Sim.gui["label_frame"].text = str(b.value)
     Sim.i = b.value
+    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
     update_stuff()
 
 def widget_func_subnodes_add():
@@ -945,6 +985,9 @@ def widget_func_toggle_cables(b):
 def widget_func_toggle_cursor_brackets(b):
     Sim.gui["bracket_left"].visible = b.checked
     Sim.gui["bracket_right"].visible = b.checked
+    Sim.axis_x.visible = b.checked
+    Sim.axis_y.visible = b.checked
+    Sim.axis_z.visible = b.checked
 
 def widget_func_toggle_nodes(b):
     """toggle visibility for nodes (busbars)"""
@@ -983,10 +1026,21 @@ def widget_func_toggle_arrow_shadow(b):
         arrow.visible = b.checked
 
 
+def widget_func_toggle_flying_while_paused(b):
+    Sim.flying_while_paused = b.checked
+
+
 def widget_func_toggle_cable_shadow(b):
     for curve in Sim.sub_cables.values():
         for k in range(curve.npoints):
             curve.modify(k, visible=b.checked)
+    # generator-cables
+    for curve in Sim.generator_lines.values():
+        curve.visible=b.checked
+
+    # load-cables
+    for curve in Sim.load_lines.values():
+        curve.visible = b.checked
         #pass
         # if (i, j) in Sim.mini_shadows:
         #    for n, shadow in Sim.mini_shadows[(i, j)].items():
@@ -1251,14 +1305,14 @@ def widget_func_factor_losses(b):
 #         for o in d.values():
 #             o.visible = True
 
-def widget_func_testflip():
-    for (i,j), arrowlist in Sim.arrows.items():
-        for arrow in arrowlist:
-            arrow.flip_direction()
+#def widget_func_testflip():
+#    for (i,j), arrowlist in Sim.arrows.items():
+#        for arrow in arrowlist:
+#            arrow.flip_direction()
 
 def widget_func_animation_duration(b):
     """set new animation duration from gui"""
-    # animation_duration = 20  # seconds
+    # animation_duration = 2000  # seconds
     # frame_duration = animation_duration / len(Data.df)
     # sanity check
     new_number = b.number
@@ -1274,9 +1328,10 @@ def widget_func_animation_duration(b):
 
 def widget_func_start_simulation(b):
     layout_save()
-    Sim.gui["mode"].text = "mode is now: simulation"
+
     # Sim.gui["layout_save"].disabled = True
     Sim.mode = "simulation"
+    Sim.gui["mode"].text = f"{Sim.mode}"
     # Sim.gui["arrange"].disabled = False
     Sim.gui["simulation"].disabled = True
     Sim.gui["restart"].disabled = False
@@ -1288,13 +1343,7 @@ def widget_func_start_simulation(b):
     Sim.gui["frameslider"].disabled = False
     # update gui so that cables can be toggled
     Sim.gui["box_cables"].disabled = False
-    # update gui so that gliders are visible and not anymore disabled
-    # Sim.gui["box_gliders"].disabled = False
-    # Sim.gui["box_losses"].disabled = False
-    # Sim.gui["box_shadows"].disabled = False
-    # Sim.gui["box_gliders"].checked = True
-    # Sim.gui["box_losses"].checked = True
-    # Sim.gui["box_shadows"].checked = True
+
 
     # free camera
     Sim.scene.userspin = True
@@ -1303,7 +1352,6 @@ def widget_func_start_simulation(b):
         for o in d.values():
             o.visible = False
     # turn all pink sub-cables into black shadows
-    # TODO: calculate this in the arrange mode if ANY node is dragged and update Sim.gui[bottomtext]
     Sim.shortest_subcable = None
     for (i,j), curve in Sim.sub_cables.items():
         curve.color=vp.color.gray(0.33)
@@ -1315,7 +1363,8 @@ def widget_func_start_simulation(b):
             distance = vp.mag(point - pointlist[n-1])
             if Sim.shortest_subcable is None or distance < Sim.shortest_subcable:
                 Sim.shortest_subcable = distance
-    Sim.gui["bottomtext1"].text = f"shortest subcable length: {Sim.shortest_subcable}\n"
+    Sim.gui["bottomtext1"].text += f"shortest subcable length: {Sim.shortest_subcable}\n"
+
 
     # update Sim.flying_arrows_length if necessary
     if Sim.base["flying_arrows_length"] < Sim.shortest_subcable:
@@ -1329,6 +1378,7 @@ def widget_func_start_simulation(b):
         #print(pointlist)
         #print("pointlist:",pointlist)
         delta = 0
+        Sim.tubes_node[(i,j)] = []
         for k, pos in enumerate(pointlist):
             if k == curve.npoints - 1:
                 continue
@@ -1336,21 +1386,44 @@ def widget_func_start_simulation(b):
             #if k2 == curve.npoints:
             #    k2 = 0
             pos2 = pointlist[k+1] # where arrow wants to fly to
+            Sim.tubes_node[(i,j)].append(vp.cylinder(pos=pos,
+                                                     axis=pos2-pos,
+                                                     opacity=Sim.tubes_opacity,
+                                                     radius=Sim.base["cables_r"]+Sim.factor["cables_r"] * Data.cables_power_max *Sim.tubes_radius_factor + Sim.tubes_radius_delta,
+                                                     ))
             #print(k,k2, pos, pos2)
             axis = vp.norm(pos2-pos)
             startpos = pos + axis * delta
+
             while vp.mag(startpos-pos) < vp.mag(pos2-pos):
                 FlyingArrow(i,j,k, True, pos=startpos, color=vp.color.gray(0.75))
+
                 delta += Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
                 startpos = pos + axis * delta
             delta = vp.mag(startpos-pos) - vp.mag(pos2-pos)
             #vp.label(text=f"{k}", pos=pos, color=vp.color.white, box=False, opacity=0)
+
+
+            # create glass tube
+            ##tubes_radius_factor = 1.0
+            ##tubes_radius_delta = 0.0
+            ##tubes_opacity = 0.8
+            ##tubes_node = {}  # {(i,j):cylinder,}
+            ##tubes_load = {}  # {node_number:cylinder,}
+            ##tubes_generator = {}  # {generator_number:cylinder,}
+
+
     #  --- end flying arrows
 
     # --- start flying angles from generator to node ---
     for gen_number, node_number in Data.generators.items():
         generator = Sim.generators[gen_number]
         node = Sim.nodes[node_number]
+        Sim.tubes_generator[gen_number] = vp.cylinder(pos=generator.pos,
+                                                     axis=node.pos-generator.pos,
+                                                     opacity=Sim.tubes_opacity,
+                                                     radius=Sim.base["cables_r"]+Sim.factor["cables_r"] * Data.cables_power_max *Sim.tubes_radius_factor + Sim.tubes_radius_delta,
+                                                     )
         startpos = vp.vector(generator.pos.x, generator.pos.y, generator.pos.z)
         while vp.mag(startpos - generator.pos) < vp.mag(node.pos - generator.pos):
             f = FlyingArrowFromGenerator(gen_number, pos=startpos, color=vp.color.yellow)
@@ -1360,6 +1433,11 @@ def widget_func_start_simulation(b):
     for node_number in Data.loads:  # it's a list because node_number == load_number
         load = Sim.loads[node_number]
         node = Sim.nodes[node_number]
+        Sim.tubes_load[node_number] = vp.cylinder(pos=load.pos,
+                                                     axis=node.pos-load.pos,
+                                                     opacity=Sim.tubes_opacity,
+                                                     radius=Sim.base["cables_r"]+Sim.factor["cables_r"] * Data.cables_power_max *Sim.tubes_radius_factor + Sim.tubes_radius_delta,
+                                                     )
         startpos = vp.vector(node.pos.x, node.pos.y, node.pos.z)
         while vp.mag(startpos-node.pos) < vp.mag(node.pos - load.pos):
             f = FlyingArrowToLoad(node_number, pos=startpos, color=vp.color.purple)
@@ -1929,7 +2007,7 @@ def create_widgets():
     Sim.gui["subnodes_add"] = vp.button(bind=widget_func_subnodes_add, text="+", pos=Sim.scene.title_anchor, disabled=True)
     Sim.gui["subnodes_remove"] = vp.button(bind=widget_func_subnodes_remove, text="-", pos=Sim.scene.title_anchor,
                                          disabled=True)
-    Sim.gui["mode"] = vp.wtext(pos=Sim.scene.title_anchor, text=" mode is now: arrange nodes. ")
+    Sim.gui["mode"] = vp.wtext(pos=Sim.scene.title_anchor, text=f"{Sim.mode}")
     Sim.gui["simulation"] = vp.button(bind=widget_func_start_simulation, text="start simulation", pos=Sim.scene.title_anchor,
                                       disabled=False)
     Sim.gui["restart"] = vp.button(bind=widget_func_restart, text="|<", pos=Sim.scene.title_anchor, disabled=True)
@@ -1944,8 +2022,8 @@ def create_widgets():
     Sim.gui[" timeframe"] = vp.wtext(pos=Sim.scene.title_anchor, text="timeframe:  ")
     Sim.gui["frameslider"] = vp.slider(pos=Sim.scene.title_anchor, bind=widget_func_time_slider, min=0, max=len(Data.df),
                                        length=600, step=1, disabled=True)
-    Sim.gui["label_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=" 0")
-    Sim.gui["label_last_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f" of {len(Data.df)} ")
+    Sim.gui["label_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f"0/0 time: {Data.df['Time(s)'][Sim.i]}")
+    #Sim.gui["label_last_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f"/{len(Data.df)}")
     Sim.scene.append_to_title("\n")
  
     #Sim.scene.append_to_caption("<code>losses:      |  </code>")
@@ -2161,6 +2239,10 @@ def create_widgets():
     Sim.gui["box_sloped_cables"] = vp.checkbox(pos=Sim.scene.caption_anchor,
                                                text="", checked=False,
                                                bind=widget_func_toggle_sloped_cables)
+    Sim.scene.append_to_caption("<code> | arrows fly during pause: </code>")
+    Sim.gui["flying_while_paused"] = vp.checkbox(pos=Sim.scene.caption_anchor,
+                                                  text="",checked=False,
+                                                  bind=widget_func_toggle_flying_while_paused)
     Sim.scene.append_to_caption("\n")
     #Sim.scene.append_to_caption("<code>letters:     |  </code>")
     #Sim.gui["box_letters"] = vp.checkbox(pos=Sim.scene.caption_anchor, text="<code> |  </code>", checked=True,
@@ -2184,11 +2266,13 @@ def create_widgets():
 
     Sim.scene.append_to_caption("\n")
     Sim.scene.append_to_caption("Animation (full Simulation) Duration [seconds]: ")
-    Sim.gui["animation_duration"] = vp.winput(pos=Sim.scene.caption_anchor, text="20", type="numeric", width=50, bind=widget_func_animation_duration)
-    
+    Sim.gui["animation_duration"] = vp.winput(pos=Sim.scene.caption_anchor, text=f"{Sim.animation_duration}", type="numeric", width=50, bind=widget_func_animation_duration)
+    Sim.scene.append_to_caption(" Tube opacity (0-1): ")
+    Sim.gui["tube_opacity"] = vp.wtext(pos=Sim.scene.caption_anchor, text=f"{Sim.tubes_opacity:.2f} ")
+    Sim.gui["tube_opacity_slider"] = vp.slider(bind=widget_func_tube_opacity, min=0.0, max=1.0, value=f"{Sim.tubes_opacity}", length=300)
     
     Sim.scene.append_to_caption("\n")
-    Sim.gui["bottomtext1"] = vp.wtext(pos=Sim.scene.caption_anchor, text="Bottom text start\nBottom text end\n")
+
     # ------------------------
     # ---- widgets below window in caption area --------------
     t = "<code>entinity:    |    unit       |" \
@@ -2429,8 +2513,10 @@ def create_widgets():
     Sim.gui["min_max_loads"] = vp.wtext(pos=Sim.scene.caption_anchor, text="? / ?")
     Sim.scene.append_to_caption("\n")
     # ------------------------------------
-    
-    
+    Sim.gui["bottomtext1"] = vp.wtext(pos=Sim.scene.caption_anchor, text="")
+    displaydict = {k:v for k,v in Data.__dict__.items() if any((k.endswith("_min"), k.endswith("_max")))}
+    for k,v in displaydict.items():
+        Sim.gui["bottomtext1"].text += f"{k}: {v}\n"
     # ----------------------- 
     Sim.gui["cursor"] = vp.label(text="mouse pos", pixel_pos=True, pos=vp.vector(10,10,0), color=vp.color.black, align="left", box=False, visible=True, opacity=0.5)
     Sim.gui["camera"] = vp.label(text="camera pos", pixel_pos=True, pos=vp.vector(Sim.canvas_width, 10,0), color=vp.color.black, align="right", box=False, visible=True, opacity=0.5)
@@ -2666,9 +2752,9 @@ def mouse_move():
 def create_stuff():
     # axis arrows with letters
     ### Sim.test_arrow = vp.arrow(pos=Sim.center + vp.vector(0,1,0), axis=vp.vector(0,-1,0), color=vp.color.black)
-    vp.arrow(pos=Sim.center, axis=vp.vector(0.1, 0, 0), color=vp.color.red, pickable=False)
-    vp.arrow(pos=Sim.center, axis=vp.vector(0, 0.1, 0), color=vp.color.green, pickable=False)
-    vp.arrow(pos=Sim.center, axis=vp.vector(0, 0, 0.1), color=vp.color.blue, pickable=False)
+    Sim.axis_x = vp.arrow(pos=Sim.center, axis=vp.vector(0.1, 0, 0), color=vp.color.red, pickable=False)
+    Sim.axis_y = vp.arrow(pos=Sim.center, axis=vp.vector(0, 0.1, 0), color=vp.color.green, pickable=False)
+    Sim.axis_z = vp.arrow(pos=Sim.center, axis=vp.vector(0, 0, 0.1), color=vp.color.blue, pickable=False)
     # ---- create ground floor ----
     #Sim.scene.visible=False
     vp.box(  # pos=vp.vector(Sim.grid_max / 2, -0.05, Sim.grid_max / 2),
@@ -2819,7 +2905,7 @@ def create_stuff():
             # make automatic connection from generator to node
             Sim.generator_lines[is_generator] = vp.curve(pos=[npos, gpos],
                                                    radius=0,
-                                                   color=vp.color.orange,
+                                                   color=Sim.colors["generator_lines"],
                                                    pickable=False)
 
         if is_load:
@@ -2849,7 +2935,7 @@ def create_stuff():
                                                     pickable=False)
             Sim.load_lines[number] = vp.curve(pos=[npos, lpos],
                                                    radius=0,
-                                                   color=vp.color.purple,
+                                                   color=Sim.colors["load_lines"],
                                                    pickable=False)
     # ----- create CABLES ----
     for i, to_number_list in Data.cables_dict.items():
@@ -3096,6 +3182,13 @@ def update_stuff():
             continue
             #print("i skip this")
             #print(p, Sim.base["loads_r"], Sim.factor["loads_r"])
+
+        tube = Sim.tubes_load[number]
+        if not Sim.sloped_cables:
+            tube.pos.y = Sim.base["cables_h"] + p * Sim.factor["cables_h"]
+        else:
+            pass  # TODO sloped cables !!
+
         cyl.power = p
         cyl.radius = Sim.base["loads_r"] + p * Sim.factor["loads_r"]
         cyl.axis = vp.vector(0,Sim.base["loads_h"]+p*Sim.factor["loads_h"],0)
@@ -3118,6 +3211,14 @@ def update_stuff():
         #        f"KeyError: could not find power / angle value in line {Sim.i} for columns {col_name_power(number)} / {col_name_angle(number)}")
         #    continue
         power = Data.df[f"generator_power_{number}"][Sim.i]
+        # tube
+        tube = Sim.tubes_generator[number]
+        if not Sim.sloped_cables:
+            tube.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
+        else:
+            pass # TODO sloped cables !!
+
+
         cyl.power = power
         loading = Data.df[f"generator_loading_{number}"][Sim.i]
         g_angle = Data.df[f"generator_angle_{number}"][Sim.i]
@@ -3217,6 +3318,13 @@ def update_stuff():
             loading = Data.df[f"cable_loading_{number}_{target}"][Sim.i]
             flow = Data.df[f"cable_flow_{number}_{target}"][Sim.i]
             numtar = True if flow == 1 else False
+            tubelist = Sim.tubes_node[(number, target)]
+            for tube in tubelist:
+                if not Sim.sloped_cables:
+                    tube.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
+                else:
+                    pass # TODO sloped cables!!!!!
+
 
             ##numtar = all((power1 > 0, power2 < 0))  # True if flow from number to target
             ##power = power1 if numtar else power2
@@ -3278,6 +3386,16 @@ def update_stuff():
     return # TODO code here
 
 
+def flying_arrows():
+    # flying arrows
+    for (i, j), arrowlist in Sim.arrows.items():
+        for arrow in arrowlist:
+            arrow.update(Sim.dt)
+    for number, arrow in Sim.generator_arrows.items():
+        arrow.update(Sim.dt)
+    for number, arrow in Sim.load_arrows.items():
+        arrow.update(Sim.dt)
+
 def main():
     # Sim.scene.bind("click", mouseclick )
     Sim.scene.bind("mousedown", mousebutton_down)
@@ -3299,8 +3417,13 @@ def main():
         # Sim.status2.text = f"selected obj: {Sim.selected_object}, drag: {Sim.dragging},"
         # play animation
         if not Sim.animation_running:
+            if Sim.flying_while_paused:
+                # flying arrows
+                flying_arrows()
+
             continue
 
+        flying_arrows()
         if time_since_framechange > Sim.frame_duration:
             time_since_framechange = 0
             Sim.old_i = Sim.i
@@ -3309,18 +3432,11 @@ def main():
                 Sim.i = 0
 
             # update widgets
-            Sim.gui["label_frame"].text = f"{Sim.i}"
+            Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
             Sim.gui["frameslider"].value = Sim.i
             ## get the data from df (for y values)
             update_stuff()
-            # flying arrows
-            for (i,j), arrowlist in Sim.arrows.items():
-                for arrow in arrowlist:
-                    arrow.update(Sim.dt)
-            for number, arrow in Sim.generator_arrows.items():
-                arrow.update(Sim.dt)
-            for number, arrow in Sim.load_arrows.items():
-                arrow.update(Sim.dt)
+
 
 
 if __name__ == "__main__":
