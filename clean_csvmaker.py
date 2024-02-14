@@ -127,7 +127,7 @@ for col_name in col_names:
         gen_number = node_generator[node_number]
         print("generator",node_number, gen_number)
         df_new.loc[:, f"generator_angle_{gen_number}"] = df_raw[col_name]
-        df_new.loc[:, f"generator_power_{gen_number}"] = df_raw[f"POWR_{node_number}"]
+        df_new.loc[:, f"generator_power_{gen_number}"] = df_raw[f"POWR_{node_number}"] * 100  # CHANGE
         # calculate %loading value
         loadings = []
         for line, value in enumerate(df_raw[col_name]):
@@ -143,7 +143,7 @@ for col_name in col_names:
     elif col_name.startswith("PLOD_"):
         load_number = int(col_name[5:])
         print("loads", load_number)
-        df_new.loc[:,f"load_power_{load_number}"] = df_raw[col_name]
+        df_new.loc[:,f"load_power_{load_number}"] = df_raw[col_name] * 100 # CHANGE
         df_raw.drop(f"PLOD_{load_number}", axis=1, inplace=True)
         df_raw.drop(f"QLOD_{load_number}", axis=1, inplace=True)
     elif all((col_name.startswith("POWR_"), "_TO_" in col_name)):
