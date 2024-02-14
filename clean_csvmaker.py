@@ -134,6 +134,9 @@ for col_name in col_names:
             # % of MVA value = sqrt(P^2+Q^2) x 100 x 100 / MVA rating
             #   Data.df[new_name] = Data.df.apply(lambda row: row[colname]/mva * 100 * 100, axis=1)
             percent_of_mva_value = (df_raw.iloc[line][f"POWR_{node_number}"]**2 + df_raw.iloc[line][f"VARS_{node_number}"]**2)**0.5 * 100 * 100 / generator_mva[gen_number]
+            #percent_of_mva_value = ((df_raw.iloc[line][f"POWR_{node_number}"]) ** 2 + df_raw.iloc[line][
+            #    f"VARS_{node_number}"] ** 2) ** 0.5 * 100 * 100 / generator_mva[gen_number]
+
             loadings.append(percent_of_mva_value)
         df_new.loc[:,f"generator_loading_{gen_number}"] = loadings
         df_raw.drop(f"ANGL_{node_number}", axis=1, inplace=True)
@@ -143,7 +146,7 @@ for col_name in col_names:
     elif col_name.startswith("PLOD_"):
         load_number = int(col_name[5:])
         print("loads", load_number)
-        df_new.loc[:,f"load_power_{load_number}"] = df_raw[col_name] * 100 # CHANGE
+        df_new.loc[:,f"load_power_{load_number}"] = df_raw[col_name] * 1 # CHANGE
         df_raw.drop(f"PLOD_{load_number}", axis=1, inplace=True)
         df_raw.drop(f"QLOD_{load_number}", axis=1, inplace=True)
     elif all((col_name.startswith("POWR_"), "_TO_" in col_name)):
