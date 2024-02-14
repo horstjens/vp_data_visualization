@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.28.0"
+VERSION = "0.28.1"
 
 
 """
@@ -270,9 +270,9 @@ class Sim:
               "losses": vp.color.red,
               "middles": vp.color.gray(0.75)
               }
-    factor = {"generators_h": 0.05,
+    factor = {"generators_h": 0.001,
               "generators_r": 0.0,
-              "nodes_h": 0.05,
+              "nodes_h": 0.1,
               "nodes_r": 0.0,
               "loads_h": 0.001,
               "loads_r":0.0,
