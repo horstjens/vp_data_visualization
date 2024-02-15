@@ -5,7 +5,7 @@ import csv
 import pandas as pd    # install with pip install pandas
 import vpython as vp   # install with pip install vpython
 
-VERSION = "0.28.2"
+VERSION = "0.28.3"
 
 
 """
@@ -244,8 +244,8 @@ class Sim:
     i = 1  # line in data sheet
     old_i = None
     gui = {}  # widgets for gui
-    colordict = {"crit_low": vp.vector(0, 0, 1),  # dark blue,
-                 "too_low": vp.vector(0, 0.5, 1),  # blue,
+    colordict = {"crit_low": vp.vector(0, 0, 0.1),  # dark ,
+                 "too_low": vp.vector(0.3, 0.3, 0.3),  # gray,
                  "low": vp.vector(0, 1, 1),  # cyan
                  "good_low": vp.vector(0, 1, 0.5),  # light green
                  "good_high": vp.vector(0, 1, 0),  # green
@@ -365,7 +365,7 @@ class Sim:
     generator_arrows = {}
     load_arrows = {}
     arrows_speed = 0.02
-    arrows_speed_min = 0.02
+    arrows_speed_min = 0.00
     arrows_speed_max = 0.25
 
 
