@@ -5,9 +5,34 @@ import csv
 import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 
-VERSION = "0.28.4"
+VERSION = "0.28.5"
 
 """
+
+3 Asset to be greyed when not in service:  In this example, the circuit from 16 to 17 is switched out at t=1sec and the flow becomes zero.  Can this be greyed rather than showing a flow.
+done
+
+4 Flows: when the flow arrows come to a node they appear to go into the node. Is it possible to make the arrows disappear before they enter the node
+done for arrows to load 
+done for arrows from generator
+work in progress for arrows from node to node
+
+
+5 Flows: when the arrows go round a corner, they can peak out of the tube. Is it possible to make them turn round the corner?
+
+6 Preset configurations: I wondered if it would be possible to come up with some preset configurations to view, eg: for each of the Yokoyama configurations?
+
+7 UAE template setup: Is it possible to setup a UAE template.  I suggest we just include the UAE map as a background and offset the current geolocation data to be over the UAE.
+
+1 Maps: Is it possible to include the map options we discussed, ie: (i) map as it is currently, (ii) simple map and (iii) grid lines only and (iv) no map.  For the simple map, I know that you looked into this previously and couldn't find anything.  I wondered if something as used at TenneT power flow simulator could be included?
+
+2 Heat map on/off:  Currently we have the ability to have the colour coding depending on loading of generators and cables etc.  IS it possible to have an on/off feature so the heat map can be on or off and when it is off we just simply show generators, loads and flows each in a uniform colour.
+
+
+For UAE map it is the box bounded by 22°32’26.45”N, 51°28’48.53”E & 26°22’22.03”N, 56°34’23.91”E
+
+
+
 using simulation_data.csv ( created by clean_csvmaker.py )
     ( using / used:)
     clean_geodata.csv
@@ -368,7 +393,7 @@ class Sim:
 
 
 class FlyingArrowToLoad(vp.arrow):
-    """flying from Generator to attached Node"""
+    """flying from Node to attached Load"""
 
     def __init__(self, load_number, **kwargs):
         super().__init__(**kwargs)
@@ -388,6 +413,7 @@ class FlyingArrowToLoad(vp.arrow):
         Sim.shadows[self.number].axis = self.axis
         #self.delta100 = Data.nodes_max - Data.nodes_min
         #self.delta100 = Data.power_max
+        self.max_distance = vp.mag(self.load.pos - self.node.pos) - self.load.radius
 
     def update(self, dt):
         #try:
@@ -396,7 +422,7 @@ class FlyingArrowToLoad(vp.arrow):
         #except AttributeError:
         #    return
         try:
-            speedpercent = self.load.power / Data.cables_power_max
+            speedpercent = self.load.power / Data.power_max
         except AttributeError:
             return
         speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max - Sim.arrows_speed_min)
@@ -407,9 +433,11 @@ class FlyingArrowToLoad(vp.arrow):
         new_pos = self.pos + vp.norm(self.axis) * speed * dt
         pos0 = vp.vector(new_pos.x, 0, new_pos.z)
         # self.pos0 = vp.vector(self.pos.x,0, self.pos.z)
-        if vp.mag(pos0 - self.node.pos) > vp.mag(self.load.pos - self.node.pos):
-            new_pos = self.node.pos + vp.norm(self.axis) * (
-                        vp.mag(pos0 - self.node.pos) - vp.mag(self.load.pos - self.node.pos))
+        overshoot = vp.mag(pos0-self.node.pos) + vp.mag(self.axis) - self.max_distance
+        if overshoot > 0:
+        #if vp.mag(pos0 - self.node.pos) > self.max_distance:
+            new_pos = self.node.pos + vp.norm(self.axis) * overshoot
+                        #vp.mag(pos0 - self.node.pos) - vp.mag(self.load.pos - self.node.pos))
             # self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
         # self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
         if Sim.sloped_cables:
@@ -440,24 +468,37 @@ class FlyingArrowFromGenerator(vp.arrow):
         Sim.shadows[self.number] = vp.arrow(color=vp.color.gray(0.1), pos=vp.vector(self.pos.x, 0, self.pos.z),
                                             axis=vp.vector(self.axis.x, 0, self.axis.z))
         Sim.shadows[self.number].axis = self.axis
-        self.delta100 = Data.generators_power_max - Data.generators_power_min
+        #self.delta100 = Data.generators_power_max - Data.generators_power_min
+        self.max_distance = vp.mag(self.node.pos - self.generator.pos) - self.node.radius
 
     def update(self, dt):
         # always have the same y pos as the connected Node
+        #try:
+        #    deltap = self.generator.power - Data.generators_power_min
+        #except:
+        #    return
+        #speedpercent = deltap / self.delta100
+        #speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max - Sim.arrows_speed_min)
         try:
-            deltap = self.generator.power - Data.generators_power_min
-        except:
+            speedpercent = self.generator.power / Data.power_max
+        except AttributeError:
             return
-        speedpercent = deltap / self.delta100
         speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max - Sim.arrows_speed_min)
+
         # new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
         new_pos = self.pos + vp.norm(self.axis) * speed * dt
         pos0 = vp.vector(new_pos.x, 0, new_pos.z)
         # self.pos0 = vp.vector(self.pos.x,0, self.pos.z)
-        if vp.mag(pos0 - self.generator.pos) > vp.mag(self.node.pos - self.generator.pos):
-            new_pos = self.generator.pos + vp.norm(self.axis) * (
-                        vp.mag(pos0 - self.generator.pos) - vp.mag(self.node.pos - self.generator.pos))
+        #if vp.mag(pos0 - self.generator.pos) > vp.mag(self.node.pos - self.generator.pos):
+        #    new_pos = self.generator.pos + vp.norm(self.axis) * (
+        #                vp.mag(pos0 - self.generator.pos) - vp.mag(self.node.pos - self.generator.pos))
             # self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
+        overshoot = vp.mag(pos0 - self.generator.pos) + vp.mag(self.axis) - self.max_distance
+        if overshoot > 0:
+            # if vp.mag(pos0 - self.node.pos) > self.max_distance:
+            new_pos = self.generator.pos + vp.norm(self.axis) * overshoot
+
+        
         if Sim.sloped_cables:
             self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
         else:
@@ -501,7 +542,7 @@ class FlyingArrow(vp.arrow):
         # create shadow arrow
         Sim.shadows[self.number] = vp.arrow(color=vp.color.gray(0.1), pos=vp.vector(self.pos.x, 0, self.pos.z),
                                             axis=vp.vector(self.axis.x, 0, self.axis.z))
-        self.delta100 = Data.cables_power_max - Data.cables_power_min
+        #self.delta100 = Data.cables_power_max - Data.cables_power_min
 
     def new_k2(self):
         if self.i2j:
@@ -540,11 +581,17 @@ class FlyingArrow(vp.arrow):
 
     def update(self, dt):
         save_y = self.pos.y
+        #try:
+        #    deltap = Sim.cablepower[(self.i, self.j)] - Data.cables_power_min
+        #except:
+        #    return
+        #speedpercent = deltap / self.delta100
+        #speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max - Sim.arrows_speed_min)
         try:
-            deltap = Sim.cablepower[(self.i, self.j)] - Data.cables_power_min
+            speedpercent = Sim.cablepower[(self.i, self.j)]  / Data.power_max
         except:
+            # some error
             return
-        speedpercent = deltap / self.delta100
         speed = Sim.arrows_speed_min + speedpercent * (Sim.arrows_speed_max - Sim.arrows_speed_min)
 
         # new_pos = self.pos + vp.norm(self.axis) * Sim.arrows_speed * dt
@@ -1445,6 +1492,8 @@ def widget_func_start_simulation(b):
             # print(k,k2, pos, pos2)
             axis = vp.norm(pos2 - pos)
             startpos = pos + axis * delta
+            #if k == 0:
+            #    startpos +=  vp.norm(axis) * Sim.nodes[i].radius
 
             while vp.mag(startpos - pos) < vp.mag(pos2 - pos):
                 FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.gray(0.75))
@@ -1475,7 +1524,8 @@ def widget_func_start_simulation(b):
                                                           "cables_r"] * Data.cables_power_max * Sim.tubes_radius_factor + Sim.tubes_radius_delta,
                                                       )
         startpos = vp.vector(generator.pos.x, generator.pos.y, generator.pos.z)
-        while vp.mag(startpos - generator.pos) < vp.mag(node.pos - generator.pos):
+        #while vp.mag(startpos - node.pos) < (vp.mag(node.pos - load.pos) - load.radius - Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]):
+        while vp.mag(startpos - generator.pos) < (vp.mag(node.pos - generator.pos) - node.radius - Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]):
             f = FlyingArrowFromGenerator(gen_number, pos=startpos, color=vp.color.yellow)
             startpos += vp.norm(f.axis) * Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
 
@@ -1490,7 +1540,8 @@ def widget_func_start_simulation(b):
                                                       "cables_r"] * Data.cables_power_max * Sim.tubes_radius_factor + Sim.tubes_radius_delta,
                                                   )
         startpos = vp.vector(node.pos.x, node.pos.y, node.pos.z)
-        while vp.mag(startpos - node.pos) < vp.mag(node.pos - load.pos):
+        ###startpos = node.pos.clone() vectors can not be cloned
+        while vp.mag(startpos - node.pos) < (vp.mag(node.pos - load.pos) - load.radius - Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]):
             f = FlyingArrowToLoad(node_number, pos=startpos, color=vp.color.purple)
             startpos += vp.norm(f.axis) * Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
 
