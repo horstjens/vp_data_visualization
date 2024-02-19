@@ -5,22 +5,23 @@ import csv
 import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 
-VERSION = "0.28.5"
+VERSION = "0.28.6"
 
 """
-
 3 Asset to be greyed when not in service:  In this example, the circuit from 16 to 17 is switched out at t=1sec and the flow becomes zero.  Can this be greyed rather than showing a flow.
 done
 
 4 Flows: when the flow arrows come to a node they appear to go into the node. Is it possible to make the arrows disappear before they enter the node
 done for arrows to load 
 done for arrows from generator
-work in progress for arrows from node to node
-
+done for arrows from node to node
+TODO: do not allow arrow to re-spawn at origin if distance toward next arrow is too short 
 
 5 Flows: when the arrows go round a corner, they can peak out of the tube. Is it possible to make them turn round the corner?
+done (arrow turns when it's middle point crosses the tube's/cables corner point)
 
 6 Preset configurations: I wondered if it would be possible to come up with some preset configurations to view, eg: for each of the Yokoyama configurations?
+work in porgress
 
 7 UAE template setup: Is it possible to setup a UAE template.  I suggest we just include the UAE map as a background and offset the current geolocation data to be over the UAE.
 
@@ -498,7 +499,7 @@ class FlyingArrowFromGenerator(vp.arrow):
             # if vp.mag(pos0 - self.node.pos) > self.max_distance:
             new_pos = self.generator.pos + vp.norm(self.axis) * overshoot
 
-        
+
         if Sim.sloped_cables:
             self.pos = vp.vector(new_pos.x, self.node.axis.y, new_pos.z)
         else:
@@ -602,17 +603,61 @@ class FlyingArrow(vp.arrow):
         # if middle of arrow is over pos2, rotate arrow and get new pos2
         # middle = self.pos + self.axis / 2
         # if vp.mag(middle - self.pointlist[self.k]) > vp.mag(self.pointlist[self.k2]-self.pointlist[self.k]):
-        if vp.mag(self.pos0 - self.pointlist[self.k]) > vp.mag(self.pointlist[self.k2] - self.pointlist[self.k]):
-            # self.color=vp.color.red
-            # calculate new k2
+        reached_end = False
+        if all((self.i2j, self.k2 == (len(self.pointlist)-1))):
+            radius = Sim.nodes[self.j].radius + Sim.base["flying_arrows_length"]
+            reached_end = True
+        elif all((not self.i2j, self.k2 == 0)):
+            radius = Sim.nodes[self.i].radius + Sim.base["flying_arrows_length"]
+            reached_end = True
+        else:
+            radius = Sim.base["flying_arrows_length"] /2
+        overshoot = vp.mag(self.pos0 - self.pointlist[self.k]) - (vp.mag(self.pointlist[self.k2] - self.pointlist[self.k]) - radius)
+        if overshoot > 0:
             if self.i2j:
                 self.k += 1
             else:
                 self.k -= 1
             self.new_k2()
-            self.pos = self.pointlist[self.k]
+            npos = self.pointlist[self.k]
             self.pos2 = self.pointlist[self.k2]
-            self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
+            axis_old = vp.vector(self.axis.x, self.axis.y, self.axis.z)
+            self.axis = vp.norm(self.pos2 - npos) * Sim.base["flying_arrows_length"]
+
+            if not reached_end:
+                # reached end node
+                ##pass
+                #self.pos = npos
+                #self.pos += vp.norm(self.axis) * overshoot
+
+                #if self.axis != axis_old:
+                    # zig-zag point: jump back the half axis so that arrow rotates around middle point
+
+                self.pos = npos
+                self.pos += vp.norm(self.axis) * overshoot
+                self.pos += self.axis * -0.5  # FEHLER??
+                #else:
+                    # new point in straight line (middle point)
+                #pass
+            else:
+                self.pos = npos
+                self.pos += vp.norm(self.axis) * overshoot
+
+
+
+
+        # if vp.mag(self.pos0 - self.pointlist[self.k]) > vp.mag(self.pointlist[self.k2] - self.pointlist[self.k]):
+        #     # self.color=vp.color.red
+        #     # calculate new k2
+        #     if self.i2j:
+        #         self.k += 1
+        #     else:
+        #         self.k -= 1
+        #     self.new_k2()
+        #     self.pos = self.pointlist[self.k]
+        #     self.pos2 = self.pointlist[self.k2]
+        #     self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
+
         self.pos.y = save_y
         # update shadow
         Sim.shadows[self.number].pos = vp.vector(self.pos.x, 0, self.pos.z)
@@ -1475,32 +1520,50 @@ def widget_func_start_simulation(b):
         # print(pointlist)
         # print("pointlist:",pointlist)
         delta = 0
+        overshoot = 0
         Sim.tubes_node[(i, j)] = []
+        total_length = 0
+        my_length = 0
+        startpos = None
         for k, pos in enumerate(pointlist):
             if k == curve.npoints - 1:
                 continue
+            #if k == 0:
+            startpos = vp.vector(pos.x, pos.y, pos.z)
             # k2 = k+1
             # if k2 == curve.npoints:
             #    k2 = 0
             pos2 = pointlist[k + 1]  # where arrow wants to fly to
+            startpos += overshoot * vp.norm(pos2-pos)
             Sim.tubes_node[(i, j)].append(vp.cylinder(pos=pos,
                                                       axis=pos2 - pos,
                                                       opacity=Sim.tubes_opacity,
                                                       radius=Sim.base["cables_r"] + Sim.factor[
                                                           "cables_r"] * Data.cables_power_max * Sim.tubes_radius_factor + Sim.tubes_radius_delta,
                                                       ))
-            # print(k,k2, pos, pos2)
-            axis = vp.norm(pos2 - pos)
-            startpos = pos + axis * delta
+            total_length += vp.mag(pos2-pos)
+            # start flying arrows TODO: hier weitermachen
+            while my_length < total_length:
+                FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.gray(0.75))
+                my_length += Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]
+                overshoot = my_length - total_length
+                if overshoot < 0:
+                    startpos += vp.norm(pos2-pos)* Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]
+                else:
+                    break
+
+            ## print(k,k2, pos, pos2)
+            #axis = vp.norm(pos2 - pos)
+            #startpos = pos + axis * delta
             #if k == 0:
             #    startpos +=  vp.norm(axis) * Sim.nodes[i].radius
 
-            while vp.mag(startpos - pos) < vp.mag(pos2 - pos):
-                FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.gray(0.75))
+            #while vp.mag(startpos - pos) < vp.mag(pos2 - pos):
+            #    FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.gray(0.75))#
 
-                delta += Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
-                startpos = pos + axis * delta
-            delta = vp.mag(startpos - pos) - vp.mag(pos2 - pos)
+            #    delta += Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
+            #    startpos = pos + axis * delta
+            #delta = vp.mag(startpos - pos) - vp.mag(pos2 - pos)
             # vp.label(text=f"{k}", pos=pos, color=vp.color.white, box=False, opacity=0)
 
             # create glass tube
