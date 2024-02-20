@@ -21,14 +21,14 @@ TODO: do not allow arrow to re-spawn at origin if distance toward next arrow is 
 done (arrow turns when it's middle point crosses the tube's/cables corner point)
 
 6 Preset configurations: I wondered if it would be possible to come up with some preset configurations to view, eg: for each of the Yokoyama configurations?
-done ( tube should also oscillate?)
+done 
 
 7 UAE template setup: Is it possible to setup a UAE template.  I suggest we just include the UAE map as a background and offset the current geolocation data to be over the UAE.
 
 1 Maps: Is it possible to include the map options we discussed, ie: (i) map as it is currently, (ii) simple map and (iii) grid lines only and (iv) no map.  For the simple map, I know that you looked into this previously and couldn't find anything.  I wondered if something as used at TenneT power flow simulator could be included?
 
 2 Heat map on/off:  Currently we have the ability to have the colour coding depending on loading of generators and cables etc.  IS it possible to have an on/off feature so the heat map can be on or off and when it is off we just simply show generators, loads and flows each in a uniform colour.
-done (already exist: checkboxes for color coding)
+done
 
 For UAE map it is the box bounded by 22°32’26.45”N, 51°28’48.53”E & 26°22’22.03”N, 56°34’23.91”E
 
@@ -1419,6 +1419,45 @@ def widget_func_load_preset(b):
         Sim.factor["loads_h"] = 0.001
         Sim.gui["loads_base_h"].text = "0.0"
         Sim.base["loads_h"] = 0.0
+    elif b.index == 5: # Yokoama D: sloped cables, nodes change height, generators change height and radius
+        Sim.gui["box_sloped_cables"].checked = True
+        Sim.sloped_cables = True
+        # nodes
+        Sim.gui["nodes_factor_r"].text = "0.0"
+        Sim.factor["nodes_r"] = 0.0
+        Sim.gui["nodes_base_r"].text = "0.06"
+        Sim.base["nodes_r"] = 0.06
+        Sim.gui["nodes_factor_h"].text = "0.1"
+        Sim.factor["nodes_h"] = 0.1
+        Sim.gui["nodes_base_h"].text = "0.0"
+        Sim.base["nodes_h"] = 0.0
+        # cables
+        Sim.gui["cables_factor_r"].text = "0.0"
+        Sim.factor["cables_r"] = 0.0
+        Sim.gui["cables_base_r"].text = "0.03"
+        Sim.base["cables_r"] = 0.03
+        Sim.gui["cables_factor_h"].text = "0.0"
+        Sim.factor["cables_h"] = 0.0
+        Sim.gui["cables_base_h"].text = "0.03"
+        Sim.base["cables_h"] = 0.03
+        # generators
+        Sim.gui["generators_factor_r"].text = "0.0001"
+        Sim.factor["generators_r"] = 0.0001
+        Sim.gui["generators_base_r"].text = "0.01"
+        Sim.base["generators_r"] = 0.01
+        Sim.gui["generators_factor_h"].text = "0.001"
+        Sim.factor["generators_h"] = 0.001
+        Sim.gui["generators_base_h"].text = "0.0"
+        Sim.base["generators_h"] = 0.0
+        # loads
+        Sim.gui["loads_factor_r"].text = "0.0"
+        Sim.factor["loads_r"] = 0.0
+        Sim.gui["loads_base_r"].text = "0.04"
+        Sim.base["loads_r"] = 0.04
+        Sim.gui["loads_factor_h"].text = "0.001"
+        Sim.factor["loads_h"] = 0.001
+        Sim.gui["loads_base_h"].text = "0.0"
+        Sim.base["loads_h"] = 0.0
     # in every case:
     update_stuff()
 
@@ -2420,7 +2459,7 @@ def create_widgets():
     # -------------------------------------------------------
     Sim.scene.append_to_caption("load presets: ")
     #Sim.gui["preset"] = vp.button(pos=Sim.scene.caption_anchor,text=" default ", bind=widget_func_load_preset_default, disabled=True)
-    Sim.gui["preset"] = vp.menu(bind=widget_func_load_preset, choices=["none", "default","Yokoyama A", "Yokoyama B", "Yokoyama C"], index=0, disabled=True)
+    Sim.gui["preset"] = vp.menu(bind=widget_func_load_preset, choices=["none", "default","Yokoyama A", "Yokoyama B", "Yokoyama C", "Yokoyama D"], index=0, disabled=True)
     #Sim.gui["preset_A"] = vp.button(pos=Sim.scene.caption_anchor, text=" Yokoyama A ", bind=widget_func_load_preset_A, disabled=True)
     #Sim.gui["preset_B"] = vp.button(pos=Sim.scene.caption_anchor, text=" Yokoyama B ", bind=widget_func_load_preset_B, disabled=True)
     #Sim.gui["preset_C"] = vp.button(pos=Sim.scene.caption_anchor, text=" Yokoyama C ", bind=widget_func_load_preset_C, disabled=True)
