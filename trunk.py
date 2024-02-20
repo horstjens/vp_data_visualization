@@ -5,7 +5,7 @@ import csv
 import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 
-VERSION = "0.28.6"
+VERSION = "0.28.7"
 
 """
 3 Asset to be greyed when not in service:  In this example, the circuit from 16 to 17 is switched out at t=1sec and the flow becomes zero.  Can this be greyed rather than showing a flow.
@@ -21,14 +21,14 @@ TODO: do not allow arrow to re-spawn at origin if distance toward next arrow is 
 done (arrow turns when it's middle point crosses the tube's/cables corner point)
 
 6 Preset configurations: I wondered if it would be possible to come up with some preset configurations to view, eg: for each of the Yokoyama configurations?
-work in porgress
+done ( tube should also oscillate?)
 
 7 UAE template setup: Is it possible to setup a UAE template.  I suggest we just include the UAE map as a background and offset the current geolocation data to be over the UAE.
 
 1 Maps: Is it possible to include the map options we discussed, ie: (i) map as it is currently, (ii) simple map and (iii) grid lines only and (iv) no map.  For the simple map, I know that you looked into this previously and couldn't find anything.  I wondered if something as used at TenneT power flow simulator could be included?
 
 2 Heat map on/off:  Currently we have the ability to have the colour coding depending on loading of generators and cables etc.  IS it possible to have an on/off feature so the heat map can be on or off and when it is off we just simply show generators, loads and flows each in a uniform colour.
-
+done (already exist: checkboxes for color coding)
 
 For UAE map it is the box bounded by 22°32’26.45”N, 51°28’48.53”E & 26°22’22.03”N, 56°34’23.91”E
 
@@ -315,7 +315,7 @@ class Sim:
             "nodes_r": 0.06,
             "loads_h": 0.0,
             "loads_r": 0.04,
-            "cables_h": 0.1,
+            "cables_h": 0.03,
             "cables_r": 0.03,
             "middles_h": 0.0,
             "middles_r": 0.015,
@@ -1261,6 +1261,179 @@ def widget_func_nodes_base_h(b):
     update_stuff()
 
 
+def widget_func_load_preset(b):
+    print("selected preset:", b.index, b.selected)
+    if b.index == 1: # default
+        Sim.gui["box_sloped_cables"].checked = False
+        Sim.sloped_cables = False
+        # nodes
+        Sim.gui["nodes_factor_r"].text = "0.0"
+        Sim.factor["nodes_r"] = 0.0
+        Sim.gui["nodes_base_r"].text= "0.06"
+        Sim.base["nodes_r"] = 0.06
+        Sim.gui["nodes_factor_h"].text= "0.1"
+        Sim.factor["nodes_h"] = 0.1
+        Sim.gui["nodes_base_h"].text= "0.0"
+        Sim.base["nodes_h"] = 0.0
+        # cables
+        Sim.gui["cables_factor_r"].text = "0.0"
+        Sim.factor["cables_r"] = 0.0
+        Sim.gui["cables_base_r"].text = "0.03"
+        Sim.base["cables_r"] = 0.03
+        Sim.gui["cables_factor_h"].text = "0.0"
+        Sim.factor["cables_h"] = 0.0
+        Sim.gui["cables_base_h"].text = "0.03"
+        Sim.base["cables_h"] = 0.03
+        # generators
+        Sim.gui["generators_factor_r"].text = "0.0"
+        Sim.factor["generators_r"] = 0.0
+        Sim.gui["generators_base_r"].text = "0.05"
+        Sim.base["generators_r"] = 0.05
+        Sim.gui["generators_factor_h"].text = "0.001"
+        Sim.factor["generators_h"] = 0.001
+        Sim.gui["generators_base_h"].text = "0.0"
+        Sim.base["generators_h"] = 0.0
+        # loads
+        Sim.gui["loads_factor_r"].text = "0.0"
+        Sim.factor["loads_r"] = 0.0
+        Sim.gui["loads_base_r"].text = "0.04"
+        Sim.base["loads_r"] = 0.04
+        Sim.gui["loads_factor_h"].text = "0.001"
+        Sim.factor["loads_h"] = 0.001
+        Sim.gui["loads_base_h"].text = "0.0"
+        Sim.base["loads_h"] = 0.0
+    elif b.index == 2: # yokoyama1 (A) .. generators change height, cables change radius
+        Sim.gui["box_sloped_cables"].checked = False
+        Sim.sloped_cables = False
+        # nodes
+        Sim.gui["nodes_factor_r"].text = "0.0"
+        Sim.factor["nodes_r"] = 0.0
+        Sim.gui["nodes_base_r"].text = "0.04"
+        Sim.base["nodes_r"] = 0.04
+        Sim.gui["nodes_factor_h"].text = "0.0"
+        Sim.factor["nodes_h"] = 0.0
+        Sim.gui["nodes_base_h"].text = "0.1"
+        Sim.base["nodes_h"] = 0.1
+        # cables
+        Sim.gui["cables_factor_r"].text = "0.0001"
+        Sim.factor["cables_r"] = 0.0001
+        Sim.gui["cables_base_r"].text = "0.01"
+        Sim.base["cables_r"] = 0.01
+        Sim.gui["cables_factor_h"].text = "0.0"
+        Sim.factor["cables_h"] = 0.0
+        Sim.gui["cables_base_h"].text = "0.01"
+        Sim.base["cables_h"] = 0.01
+        # generators
+        Sim.gui["generators_factor_r"].text = "0.0"
+        Sim.factor["generators_r"] = 0.0
+        Sim.gui["generators_base_r"].text = "0.05"
+        Sim.base["generators_r"] = 0.05
+        Sim.gui["generators_factor_h"].text = "0.001"
+        Sim.factor["generators_h"] = 0.001
+        Sim.gui["generators_base_h"].text = "0.0"
+        Sim.base["generators_h"] = 0.0
+        # loads
+        Sim.gui["loads_factor_r"].text = "0.0"
+        Sim.factor["loads_r"] = 0.0
+        Sim.gui["loads_base_r"].text = "0.04"
+        Sim.base["loads_r"] = 0.04
+        Sim.gui["loads_factor_h"].text = "0.001"
+        Sim.factor["loads_h"] = 0.001
+        Sim.gui["loads_base_h"].text = "0.0"
+        Sim.base["loads_h"] = 0.0
+    elif b.index == 3: # yokoyama2 (B) .. only generators change height
+        Sim.gui["box_sloped_cables"].checked = False
+        Sim.sloped_cables = False
+        # nodes
+        Sim.gui["nodes_factor_r"].text = "0.0"
+        Sim.factor["nodes_r"] = 0.0
+        Sim.gui["nodes_base_r"].text = "0.04"
+        Sim.base["nodes_r"] = 0.04
+        Sim.gui["nodes_factor_h"].text = "0.0"
+        Sim.factor["nodes_h"] = 0.0
+        Sim.gui["nodes_base_h"].text = "0.1"
+        Sim.base["nodes_h"] = 0.1
+        # cables
+        Sim.gui["cables_factor_r"].text = "0.0"
+        Sim.factor["cables_r"] = 0.0
+        Sim.gui["cables_base_r"].text = "0.03"
+        Sim.base["cables_r"] = 0.03
+        Sim.gui["cables_factor_h"].text = "0.0"
+        Sim.factor["cables_h"] = 0.0
+        Sim.gui["cables_base_h"].text = "0.03"
+        Sim.base["cables_h"] = 0.03
+        # generators
+        Sim.gui["generators_factor_r"].text = "0.0"
+        Sim.factor["generators_r"] = 0.0
+        Sim.gui["generators_base_r"].text = "0.05"
+        Sim.base["generators_r"] = 0.05
+        Sim.gui["generators_factor_h"].text = "0.001"
+        Sim.factor["generators_h"] = 0.001
+        Sim.gui["generators_base_h"].text = "0.0"
+        Sim.base["generators_h"] = 0.0
+        # loads
+        Sim.gui["loads_factor_r"].text = "0.0"
+        Sim.factor["loads_r"] = 0.0
+        Sim.gui["loads_base_r"].text = "0.04"
+        Sim.base["loads_r"] = 0.04
+        Sim.gui["loads_factor_h"].text = "0.001"
+        Sim.factor["loads_h"] = 0.001
+        Sim.gui["loads_base_h"].text = "0.0"
+        Sim.base["loads_h"] = 0.0
+    elif b.index == 4:  # yokoyama3 (C) sloped cables, nodes and generators change height
+        Sim.gui["box_sloped_cables"].checked = True
+        Sim.sloped_cables = True
+        # nodes
+        Sim.gui["nodes_factor_r"].text = "0.0"
+        Sim.factor["nodes_r"] = 0.0
+        Sim.gui["nodes_base_r"].text = "0.06"
+        Sim.base["nodes_r"] = 0.06
+        Sim.gui["nodes_factor_h"].text = "0.1"
+        Sim.factor["nodes_h"] = 0.1
+        Sim.gui["nodes_base_h"].text = "0.0"
+        Sim.base["nodes_h"] = 0.0
+        # cables
+        Sim.gui["cables_factor_r"].text = "0.0"
+        Sim.factor["cables_r"] = 0.0
+        Sim.gui["cables_base_r"].text = "0.03"
+        Sim.base["cables_r"] = 0.03
+        Sim.gui["cables_factor_h"].text = "0.0"
+        Sim.factor["cables_h"] = 0.0
+        Sim.gui["cables_base_h"].text = "0.03"
+        Sim.base["cables_h"] = 0.03
+        # generators
+        Sim.gui["generators_factor_r"].text = "0.0"
+        Sim.factor["generators_r"] = 0.0
+        Sim.gui["generators_base_r"].text = "0.05"
+        Sim.base["generators_r"] = 0.05
+        Sim.gui["generators_factor_h"].text = "0.001"
+        Sim.factor["generators_h"] = 0.001
+        Sim.gui["generators_base_h"].text = "0.0"
+        Sim.base["generators_h"] = 0.0
+        # loads
+        Sim.gui["loads_factor_r"].text = "0.0"
+        Sim.factor["loads_r"] = 0.0
+        Sim.gui["loads_base_r"].text = "0.04"
+        Sim.base["loads_r"] = 0.04
+        Sim.gui["loads_factor_h"].text = "0.001"
+        Sim.factor["loads_h"] = 0.001
+        Sim.gui["loads_base_h"].text = "0.0"
+        Sim.base["loads_h"] = 0.0
+    # in every case:
+    update_stuff()
+
+#def widget_func_load_preset_A(b):
+#    pass
+
+#def widget_func_load_preset_B(b):
+#    pass
+
+#def widget_func_load_preset_C(b):
+#    pass
+
+
+
+
 def widget_func_loads_base_h(b):
     Sim.base["loads_h"] = b.number
     update_stuff()
@@ -1456,6 +1629,11 @@ def widget_func_animation_duration(b):
 
 def widget_func_start_simulation(b):
     layout_save()
+    # enable preset buttons
+    Sim.gui["preset"].disabled = False
+    #Sim.gui["preset_A"].disabled = False
+    #Sim.gui["preset_B"].disabled = False
+    #Sim.gui["preset_C"].disabled = False
 
     # Sim.gui["layout_save"].disabled = True
     Sim.mode = "simulation"
@@ -1544,7 +1722,7 @@ def widget_func_start_simulation(b):
             total_length += vp.mag(pos2-pos)
             # start flying arrows TODO: hier weitermachen
             while my_length < total_length:
-                FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.gray(0.75))
+                FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.gray(0.75), round=True)
                 my_length += Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]
                 overshoot = my_length - total_length
                 if overshoot < 0:
@@ -1589,7 +1767,7 @@ def widget_func_start_simulation(b):
         startpos = vp.vector(generator.pos.x, generator.pos.y, generator.pos.z)
         #while vp.mag(startpos - node.pos) < (vp.mag(node.pos - load.pos) - load.radius - Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]):
         while vp.mag(startpos - generator.pos) < (vp.mag(node.pos - generator.pos) - node.radius - Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]):
-            f = FlyingArrowFromGenerator(gen_number, pos=startpos, color=vp.color.yellow)
+            f = FlyingArrowFromGenerator(gen_number, pos=startpos, color=vp.color.yellow, round=True)
             startpos += vp.norm(f.axis) * Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
 
     # ---- start flying angles from node to load ------
@@ -1605,7 +1783,7 @@ def widget_func_start_simulation(b):
         startpos = vp.vector(node.pos.x, node.pos.y, node.pos.z)
         ###startpos = node.pos.clone() vectors can not be cloned
         while vp.mag(startpos - node.pos) < (vp.mag(node.pos - load.pos) - load.radius - Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]):
-            f = FlyingArrowToLoad(node_number, pos=startpos, color=vp.color.purple)
+            f = FlyingArrowToLoad(node_number, pos=startpos, color=vp.color.purple, round=True)
             startpos += vp.norm(f.axis) * Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
 
 
@@ -2240,6 +2418,17 @@ def create_widgets():
     #                              bind=widget_func_toggle_gliders)
     Sim.scene.append_to_caption("\n")
     # -------------------------------------------------------
+    Sim.scene.append_to_caption("load presets: ")
+    #Sim.gui["preset"] = vp.button(pos=Sim.scene.caption_anchor,text=" default ", bind=widget_func_load_preset_default, disabled=True)
+    Sim.gui["preset"] = vp.menu(bind=widget_func_load_preset, choices=["none", "default","Yokoyama A", "Yokoyama B", "Yokoyama C"], index=0, disabled=True)
+    #Sim.gui["preset_A"] = vp.button(pos=Sim.scene.caption_anchor, text=" Yokoyama A ", bind=widget_func_load_preset_A, disabled=True)
+    #Sim.gui["preset_B"] = vp.button(pos=Sim.scene.caption_anchor, text=" Yokoyama B ", bind=widget_func_load_preset_B, disabled=True)
+    #Sim.gui["preset_C"] = vp.button(pos=Sim.scene.caption_anchor, text=" Yokoyama C ", bind=widget_func_load_preset_C, disabled=True)
+    Sim.scene.append_to_caption("\n")
+    #Sim.scene.append_to_caption("save presets: ")
+
+    #Sim.scene.append_to_caption("\n")
+    # ------------
     Sim.scene.append_to_caption(
         "|  entity   |  visible  |  letter | label|  radius factor  | radius base   | height factor | height base  | dynamic color | set camera to position: ")
     Sim.gui["camerapos1"] = vp.button(pos=Sim.scene.caption_anchor, text=" original ", bind=widget_func_camera1)
