@@ -6,12 +6,17 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.29.0"
+VERSION = "0.29.1"
 
 """
 uae geo 2:
-min (lat,lon):  23.3691	    46.594261   -> 23,   46
-max (lat, lon): 25.145999	56.376785   -> 27,   57 
+#min (lat,lon):  23.3691	    46.594261   -> 23,   46
+#max (lat, lon): 25.145999	56.376785   -> 27,   57 
+
+
+min (lat,lon) 23.571263	51.638157 -> 23, 51
+max (lat,lon) 25.910083	56.326511 -> 26, 57
+
 
 
 
@@ -128,15 +133,19 @@ class Data:
         # get latitude, longitude
         lat = df_locations.iloc[line_number]["latitude"]
         lon = df_locations.iloc[line_number]["longitude"]
+        #####lat = df_locations.iloc[line_number]["utm_latitude"]
+        #####lon = df_locations.iloc[line_number]["utm_longitude"]
+        #####zone_number= df_locations.iloc[line_number]["utm_zone_number"]
         # data is in UTM format, need to be transformed using pyproj
         # see https://ocefpaf.github.io/python4oceanographers/blog/2013/12/16/utm/
         # official documentation: https://pyproj4.github.io/pyproj/stable/examples.html
         # https://proj.org/en/9.4/operations/projections/utm.html
         # https://proj.org/en/9.4/usage/projections.html
         # UAE is zone 40
-        #p = pyproj.Proj(proj="utm", zone=40, ellps='WGS84', preserve_units=False)
-        #z, x = p(lat,lon,inverse=True)
-        node_geo[node_number] = (lat,lon)
+        ####p = pyproj.Proj(proj="utm", zone=zone_number, ellps='WGS84', preserve_units=False)
+        ####z, x = p(lat,lon,inverse=True)
+        ##node_geo[node_number] = (lat,lon)
+        node_geo[node_number]= (lat,lon)
         if df_locations.iloc[line_number]["generator"] == "Yes":
             generators.append(node_number)
         if df_locations.iloc[line_number]["load"] == "Yes":
@@ -304,13 +313,13 @@ class Sim:
     # box bounded by 22°32’26.45”N, 51°28’48.53”E & 26°22’22.03”N, 56°34’23.91”E
     # minmax, lat: 22, 27
     # minmax lon: 51, 57
-    mapname = os.path.join("assets", "map_uae3.jpg")
+    mapname = os.path.join("assets", "map_uae4.jpg")
     #bounding_box = (-74, 41, -69, 45)
     #bounding_box = (51,22.5,57,26.5)
     # uae geo 2:
     # min (lat,lon):  23.3691	    46.594261   -> 23,   46
     # max (lat, lon): 25.145999	56.376785   -> 27,   57
-    bounding_box = (46, 23, 57,27)
+    bounding_box = (51, 23, 57,26)
     x1, z1, x2, z2 = bounding_box[0], bounding_box[1], bounding_box[2], bounding_box[3]
     middle = (x1 + abs(x1 - x2) / 2, z1 + abs(z1 - z2) / 2)
     center = vp.vector(middle[0], 0, middle[1])
@@ -810,7 +819,7 @@ def widget_func_restart(b):
     Sim.gui["play"].text = "Play >"
     Sim.i = 0
     Sim.gui["frameslider"].value = 0
-    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
+    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['time'][Sim.i]}"
 
 
 def widget_func_step_back(b):
@@ -820,7 +829,7 @@ def widget_func_step_back(b):
     if Sim.i > 0:
         Sim.i -= 1
         Sim.gui["frameslider"].value = Sim.i
-        Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
+        Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['time'][Sim.i]}"
         print("now at Step", Sim.i)
         update_stuff()
     else:
@@ -835,7 +844,7 @@ def widget_func_step_forward(b):
     if Sim.i < len(Data.df):
         Sim.i += 1
         Sim.gui["frameslider"].value = Sim.i
-        Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
+        Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['time'][Sim.i]}"
         print("now at Step", Sim.i)
         update_stuff()
     else:
@@ -849,7 +858,7 @@ def widget_func_end(b):
     Sim.gui["play"].text = "Play >"
     Sim.i = len(Data.df)
     Sim.gui["frameslider"].value = len(Data.df)
-    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
+    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['time'][Sim.i]}"
 
 
 def widget_func_play(b):
@@ -881,7 +890,7 @@ def widget_func_time_slider(b):
     # Sim.connAB.pos.y = power_ab[b.value]
     # Sim.gui["label_frame"].text = str(b.value)
     Sim.i = b.value
-    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
+    Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['time'][Sim.i]}"
     update_stuff()
 
 
@@ -1805,7 +1814,9 @@ def widget_func_start_simulation(b):
     #  --- end flying arrows
 
     # --- start flying angles from generator to node ---
-    for gen_number, node_number in Data.generators.items():
+    #for gen_number, node_number in Data.generators.items():
+    for node_number in Data.generators:
+        gen_number = node_number
         generator = Sim.generators[gen_number]
         node = Sim.nodes[node_number]
         Sim.tubes_generator[gen_number] = vp.cylinder(pos=generator.pos,
@@ -2440,7 +2451,7 @@ def create_widgets():
     Sim.gui["frameslider"] = vp.slider(pos=Sim.scene.title_anchor, bind=widget_func_time_slider, min=0,
                                        max=len(Data.df),
                                        length=600, step=1, disabled=True)
-    Sim.gui["label_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f"0/0 time: {Data.df['Time(s)'][Sim.i]}")
+    Sim.gui["label_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f"0/0 time: {Data.df['time'][Sim.i]}")
     # Sim.gui["label_last_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f"/{len(Data.df)}")
     Sim.scene.append_to_title("\n")
 
@@ -3139,8 +3150,10 @@ def mouse_move():
 
         # exist connected generator?
         # find out generator number: Data.generators: {gen_number:node_number}
-        if o.number in Data.generators.values():
-            gen_number = list({g for g in Data.generators if Data.generators[g] == o.number})[0]
+        #if o.number in Data.generators.values():
+        if o.number in Data.generators:
+            #gen_number = list({g for g in Data.generators if Data.generators[g] == o.number})[0]
+            gen_number = o.number
             # print("node", o.number, "-connected to generator", gen_number)
 
             # if o.number in Sim.generator_lines.keys():
@@ -3924,7 +3937,7 @@ def main():
                 Sim.i = 0
 
             # update widgets
-            Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['Time(s)'][Sim.i]}"
+            Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['time'][Sim.i]}"
             Sim.gui["frameslider"].value = Sim.i
             ## get the data from df (for y values)
             update_stuff()
