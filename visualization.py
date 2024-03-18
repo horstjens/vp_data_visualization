@@ -6,7 +6,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.29.3"
+VERSION = "0.29.4"
 
 """
 uae geo 2:
@@ -162,6 +162,9 @@ class Data:
         print(k,":",v[0],v[1])
     print("--------------------------------")
     # take some interesting columns (called 'series' in pandas)
+
+    time_min = df["time"].min()
+    time_max = df["time"].max()
 
     frequency_min = df["frequency"].min()
     frequency_max = df["frequency"].max()
@@ -3327,24 +3330,51 @@ def create_stuff2():
         Sim.needles.append(vp.arrow(pos=vp.vector(x,0,0), axis=vp.vector(0,25,0), color=vp.vector(0.25+ g*0.2,0,1)))
         vp.label(pos=vp.vector(200,85,0), pixel_pos=True, text=f"network frequency", align="center",
                  box=False,height=35, opacity=0, color=vp.color.orange)
-        Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-12,0), text="50 Hz", color=vp.color.green, height=50,
+        Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-12,0), text="50 Hz", color=vp.color.black, height=50,
                                              box=False, opacity=0)
+        Sim.gui["time_text"] = vp.label(pos=vp.vector(0, -25,0), text="time: 0 sec", color=vp.vector(0,0.5,0), height=25,
+                                        box=False, opacity=0, align="center")
         vp.label(pos=vp.vector(0,28,0), text="50.0", align="center", box=False, opacity=0, color=vp.color.black)
         vp.label(pos=vp.vector(-27,0,0), text="49.9", align="right", box=False, opacity=0, color=vp.color.black)
         vp.label(pos=vp.vector(27,0,0), text="50.1", align="left", box=False, opacity=0, color=vp.color.black)
         g += 1
-    # ------ frequency-diagram (400x250)
+    # ------ frequency-diagram (400x250) -> 200 x 100
     Sim.scene_dia1.select()
-    #f=[vp.vector(*a) for a in zip(Data.df["time"], Data.df["frequency"], [0 for i in Data.df["time"]] )]
+    y_axis = vp.arrow(pos=vp.vector(0,0,0), axis=vp.vector(0,110,0), color=vp.color.black, shaftwidth=1, headlength=8)
+    y_label = vp.label(pos=vp.vector(0,115,0), text="Hz",color=vp.color.black, box=False, opacity=0, align="left")
+    x_axis = vp.arrow(pos=vp.vector(0,0,0), axis=vp.vector(210,0,0), color=vp.color.black, shaftwidth=1, headlength=8)
+    x_label = vp.label(pos=vp.vector(200,-18,0), text="time (s)", color=vp.color.black, box=False, opacity=0, align="right")
+    # grid
+    minmax_y = int(Data.frequency_max) + 1 - int(Data.frequency_min)
+    minmax_x = int(Data.time_max) +1 - int(Data.time_min)
+    for x in range(0,201, 10):
 
-    #print(f)
-    #vp.curve(data=f, color=vp.color.black, pos=vp.vector(0,0,0))
-    #vp.box()
-        #vp.graph(title="frequency", width=300, height=200, xtitle='time', ytitle='Hz') # is selected
-        #Sim.curve1 = vp.gcurve(data=list(zip(Data.df["time"], Data.df["frequency"])),
-        #               color=vp.color.red, label="frequency",
-        #               legend=False,
-        #               )
+        c = vp.color.gray(0.8)
+        if x % 50 == 0:
+            vp.label(pos=vp.vector(x, -8, 0), text=f"{x/200*minmax_x+int(Data.time_min):.2f}", height=10, box=False, opacity=0)
+            c = vp.color.gray(0.3)
+        vp.curve(pos=[vp.vector(x, 0, 0), vp.vector(x, 100, 0)], color=c, )
+    for y in range(0,101,10):
+        c = vp.color.gray(0.8)
+        if y % 50 == 0:
+            vp.label(pos=vp.vector(-8, y, 0), text=f"{y/100*minmax_y+int(Data.frequency_min):.2f}", height=10, box=False, opacity=0)
+            c = vp.color.gray(0.3)
+        vp.curve(pos=[vp.vector(0, y, 0), vp.vector(200, y, 0)], color=c, )
+    fdata = []
+    #minmax_y = int(Data.frequency_max)+1 - int(Data.frequency_min)
+    for i, sec in enumerate(Data.df["time"]):
+        f = (Data.df["frequency"][i] - int(Data.frequency_min)) / minmax_y  # 0 ... 1
+        y = f * 100
+        x = (sec - int(Data.time_min)) / minmax_x # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
+        x = x * 200
+        fdata.append(vp.vector(x, y, 0))
+    #f=[vp.vector(*a) for a in zip(Data.df["time"]*10, Data.df["frequency"], [0 for i in Data.df["time"]] )]
+    vp.curve(pos=fdata, color=vp.color.red)
+    Sim.time_indicator_dia1 = vp.curve(canvas=Sim.scene_dia1, color=vp.color.green,
+                                       pos=[vp.vector(0,0,0), vp.vector(0,110,0)])
+    Sim.scene_dia1.center = vp.vector(100,50,0)
+    Sim.scene_dia1.camera.range = 100
+    #Sim.scene_dia1.autoscale = True
 
 
 def create_stuff():
@@ -3816,8 +3846,10 @@ def update_stuff():
     #    return
     # ---- frequency
     f = Data.df["frequency"][Sim.i]
+    sec = Data.df["time"][Sim.i]
     Sim.scene2.select()
     Sim.gui["frequency_text"].text = f"{f:.2f} Hz"
+    Sim.gui["time_text"].text = f"time: {sec:.2f} sec"
     # 50 hz...needle points north.
     # 49.9 ...neelde points west
     # 50.1 ...needle points east
@@ -3827,6 +3859,15 @@ def update_stuff():
     if delta != 0:
         degree = 90 * delta/0.1
         needle.rotate(axis=vp.vector(0,0,-1), origin=vp.vector(0,0,0), angle=vp.radians(degree))
+    # dia1 time indicator (green vertical curve), x=0..200
+
+    minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
+    x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
+    x = x * 200
+    Sim.time_indicator_dia1.modify(0, pos=vp.vector(x, 0, 0))
+    Sim.time_indicator_dia1.modify(1, pos=vp.vector(x, 110, 0))
+
+
     Sim.scene.select()
     # -------- loads --------
     # if Sim.gui["box_loads"].checked:
@@ -4070,6 +4111,8 @@ def main():
     Sim.scene2.userzoom = False
     Sim.scene2.userspin = False
     Sim.scene2.userpan = False
+
+    Sim.scene_dia1.userspin = False
 
     Sim.scene3.userzoom = False
     Sim.scene3.userspin = False
