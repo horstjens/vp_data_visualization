@@ -6,7 +6,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.29.4"
+VERSION = "0.29.5"
 
 """
 uae geo 2:
@@ -117,6 +117,7 @@ class Data:
     nodes = {}  # node_number: (lat, long, is_generator, is_load, is_storage)
     node_geo = {}
     node_names = {} # node_number: node_name
+    node_colors = {} # node_numbeR: color (for diagram legend)
     loads = [] # node_number
     storages = [] # storage_number
     generators = [] # node_number
@@ -275,6 +276,26 @@ class Data:
     time_col_name = "time"
     # print(generators_power_max, generators_power_min)
     print("Data calculation finished")
+    # create node colors for legend
+    # everything except white
+    delta = 0.9 / len(node_numbers)
+    print("delta*3", delta*3)
+    c = [0.0,0.0,0.0]
+    for i, nn in enumerate(node_numbers):
+        node_colors[nn] = (c[0],c[1],c[2])
+        c[2] += delta * 3
+        if c[2] > 0.9:
+            c[2] = 0
+            c[1] += delta * 3
+            if c[1] > 0.9:
+                c[1] = 0
+                c[0] += delta *3
+                if c[0] > 0.9:
+                    print("c0 Error", c, i)
+        print(i,nn,c)
+    print("node_colors:", node_colors)
+
+
     # generator_numbers = [i for i in range(30, 40)]  # numbers from 30 to 39
 
     # col_name for generator 30 angle: "ANGL 30[30 1.0000]1"
@@ -299,7 +320,7 @@ class Sim:
     flying_while_paused = False  # arrows fly also in pause mode
     test_arrow = None
     canvas_width = 1200
-    canvas_height = 800
+    canvas_height = 400+250+250
     mode = "arrange"
     camera_height = 0.25
     camera_range = 1.75
@@ -341,19 +362,30 @@ class Sim:
                       background=vp.color.gray(0.8),
                       align="left",  # caption is to the right?
                       )
-    scene2 = vp.canvas(#title="needle diagrams",
-                       width=400,
-                       #height=canvas_height,
-                       height=400,
-                       center=vp.vector(0, 0, 0),
-                       background=vp.color.gray(0.8),
-                       #align="right",
-                       )
+
     scene_dia1 = vp.canvas(
         width=400,
         height=250,
         background=vp.color.white,
     )
+
+    scene_dia2 = vp.canvas(
+        width=400,
+        height=250,
+        #background=vp.color.purple,
+        background=vp.color.white,
+    )
+
+
+    scene2 = vp.canvas(#title="needle diagrams",
+                       width=300,
+                       #height=canvas_height,
+                       height=200,
+                       center=vp.vector(0, 0, 0),
+                       background=vp.color.gray(0.6),
+                       align="right",
+                       )
+
 
 
     scene3 = vp.canvas(#title="gui",
@@ -842,6 +874,9 @@ def camera_to_topdown():
     # print("Sim.scene.center:", Sim.scene.center) # TODO: into gui (lable)
     # Sim.scene.camera.pos.z = Sim.center.z
 
+
+def widget_func_dia2(b):
+    print("nodes entry:", b.text)
 
 def widget_func_restart(b):
     """stop and rewind"""
@@ -3323,14 +3358,15 @@ def mouse_move():
 
 
 def create_stuff2():
+    # ----- frequence tachometer 200 x ? --------
     Sim.scene2.select()
     g = 1
     for x in range(1):
         vp.cylinder(pos=vp.vector(x,0,0),radius=30, axis=vp.vector(0,0,1))
         Sim.needles.append(vp.arrow(pos=vp.vector(x,0,0), axis=vp.vector(0,25,0), color=vp.vector(0.25+ g*0.2,0,1)))
-        vp.label(pos=vp.vector(200,85,0), pixel_pos=True, text=f"network frequency", align="center",
+        vp.label(pos=vp.vector(300/2,85,0), pixel_pos=True, text=f"network frequency", align="center",
                  box=False,height=35, opacity=0, color=vp.color.orange)
-        Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-12,0), text="50 Hz", color=vp.color.black, height=50,
+        Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-12,0), text="50 Hz", color=vp.color.black, height=48,
                                              box=False, opacity=0)
         Sim.gui["time_text"] = vp.label(pos=vp.vector(0, -25,0), text="time: 0 sec", color=vp.vector(0,0.5,0), height=25,
                                         box=False, opacity=0, align="center")
@@ -3340,8 +3376,9 @@ def create_stuff2():
         g += 1
     # ------ frequency-diagram (400x250) -> 200 x 100
     Sim.scene_dia1.select()
+    Sim.scene_dia1.append_to_title("network frequency")
     y_axis = vp.arrow(pos=vp.vector(0,0,0), axis=vp.vector(0,110,0), color=vp.color.black, shaftwidth=1, headlength=8)
-    y_label = vp.label(pos=vp.vector(0,115,0), text="Hz",color=vp.color.black, box=False, opacity=0, align="left")
+    y_label = vp.label(pos=vp.vector(0,115,0), text="Hz (network frequency)",color=vp.color.black, box=False, opacity=0, align="left")
     x_axis = vp.arrow(pos=vp.vector(0,0,0), axis=vp.vector(210,0,0), color=vp.color.black, shaftwidth=1, headlength=8)
     x_label = vp.label(pos=vp.vector(200,-18,0), text="time (s)", color=vp.color.black, box=False, opacity=0, align="right")
     # grid
@@ -3375,9 +3412,23 @@ def create_stuff2():
     Sim.scene_dia1.center = vp.vector(100,50,0)
     Sim.scene_dia1.camera.range = 100
     #Sim.scene_dia1.autoscale = True
+    # --------- volt diagram for all nodes ------------
+    Sim.scene_dia2.select()
+    Sim.scene_dia2.append_to_title("Nodes")
+    # canvas is only displayed if some 3d object is IN the canvas!
+    minmaxy = int(Data.nodes_max) + 1 - int(Data.nodes_min)
+    print("minmaxy voltage", minmaxy)
+    #vp.pyramid()
+
+    Sim.scene_dia2.append_to_caption("Nodes (numbers or names or *) >>>")
+    Sim.gui["dia2"] = vp.winput(bind=widget_func_dia2, type="string", text="*", )
 
 
 def create_stuff():
+    # right side legend
+    for i, name in Data.node_names.items():
+        vp.label(pixel_pos=True, pos=vp.vector(Sim.canvas_width,Sim.canvas_height - i * 22,0), text=f"{i}-{name}",
+                 color=vp.color.blue, align="right", font="monospace", line=False, box=False, )
     # axis arrows with letters
     ### Sim.test_arrow = vp.arrow(pos=Sim.center + vp.vector(0,1,0), axis=vp.vector(0,-1,0), color=vp.color.black)
     Sim.axis_x = vp.arrow(pos=Sim.center, axis=vp.vector(0.1, 0, 0), color=vp.color.red, pickable=False)
