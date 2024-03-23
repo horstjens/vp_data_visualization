@@ -6,7 +6,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.29.5"
+VERSION = "0.29.6"
 
 """
 uae geo 2:
@@ -104,6 +104,8 @@ TASK: find out shortest distance between subnodes (for arrow lenght), write it d
 """
 
 
+
+
 class Data:
     """Data contains variables taken from the excel/csv file"""
     # create a pandas dataframe from csv
@@ -117,7 +119,7 @@ class Data:
     nodes = {}  # node_number: (lat, long, is_generator, is_load, is_storage)
     node_geo = {}
     node_names = {} # node_number: node_name
-    node_colors = {} # node_numbeR: color (for diagram legend)
+    #node_colors = {} # (node_numbeR (from), node_number (to)  : color (for diagram legend)
     loads = [] # node_number
     storages = [] # storage_number
     generators = [] # node_number
@@ -276,24 +278,24 @@ class Data:
     time_col_name = "time"
     # print(generators_power_max, generators_power_min)
     print("Data calculation finished")
-    # create node colors for legend
-    # everything except white
-    delta = 0.9 / len(node_numbers)
-    print("delta*3", delta*3)
-    c = [0.0,0.0,0.0]
-    for i, nn in enumerate(node_numbers):
-        node_colors[nn] = (c[0],c[1],c[2])
-        c[2] += delta * 3
-        if c[2] > 0.9:
-            c[2] = 0
-            c[1] += delta * 3
-            if c[1] > 0.9:
-                c[1] = 0
-                c[0] += delta *3
-                if c[0] > 0.9:
-                    print("c0 Error", c, i)
-        print(i,nn,c)
-    print("node_colors:", node_colors)
+
+
+
+
+
+    #for i, nn in enumerate(node_numbers):
+    #    node_colors[nn] = (c[0],c[1],c[2])
+    #    c[2] += delta * 3
+    #    if c[2] > 0.9:
+    #        c[2] = 0
+    #        c[1] += delta * 3
+    #        if c[1] > 0.9:
+    #            c[1] = 0
+    #            c[0] += delta *3
+    #            if c[0] > 0.9:
+    #                print("c0 Error", c, i)
+    #    print(i,nn,c)
+    #print("node_colors:", node_colors)
 
 
     # generator_numbers = [i for i in range(30, 40)]  # numbers from 30 to 39
@@ -326,7 +328,8 @@ class Sim:
     camera_range = 1.75
     camera_pitch = -90
     shortest_subcable = None
-
+    legend = {}
+    #legend = create_color_legend()  # dictionary
 
 
     # minmax, lat: [41.06477, 44.00462]   -> 41,45
@@ -832,6 +835,69 @@ def col_name_cable(from_number, to_number):
 
 
 # ------- helper functions for Sim ----
+
+def create_color_legend():
+    # --------------- create node colors for legend -------
+    # node_numbers is [number, number2,...]
+    # everything except white (1,1,1)
+    # in cables_dict is {source_node_number : [target_node_number, target_node_number ...] }
+    # in cables is [(source,target), (source,target)....]
+    # in node_names is {node_number:name}
+    # node_colors = {}  # (node_numbeR (from), node_number (to)|None  : color (for diagram legend)
+
+    # find out how many different colors are needed for legend.
+    # each node needs a legend, each cable needs a legend
+    # however, the first cable of a source node can share its color with the color of that node
+    # also, nodes without cables may exist
+    node_numbers = Data.df_locations["number"]
+    number_of_nodes = len(node_numbers)
+    # nodes without cable as source:
+    nodes_without_cable = [] # without cable source
+    for n in Data.node_numbers:
+        if n not in Data.cables_dict:
+            nodes_without_cable.append(n)
+    #nodes_without_cable = [i for i in node_numbers if i not in cables_dict]
+    print("number of nodes:", number_of_nodes)
+    print("nodes without cable source:", nodes_without_cable)
+    number_of_cables = 0
+    for k, v in Data.cables_dict.items():
+        number_of_cables += len(v)
+    print("number of cables:", number_of_cables)
+    number_of_colors = number_of_cables + len(nodes_without_cable)
+    delta = int(number_of_colors**(1/3))
+    print("number of colors:", number_of_colors)
+    nn = min(node_numbers)
+    colors = [0,0,0]
+    legend = {}
+    while nn <= max(node_numbers):
+        colors = increase_color(colors, delta)
+        key = f"{nn:>2} {Data.node_names[nn]}"
+        if nn not in Data.cables_dict:
+            key += "      "
+            legend[key] = vp.vector(colors[0], colors[1], colors[2])
+        else:
+            for i, v in enumerate(Data.cables_dict[nn]):
+                if i == 0:
+                    key += f" {nn:>2}-{Data.cables_dict[nn][i]:>2}"
+                else:
+                    colors = increase_color(colors, delta)
+                    key = f"        {nn:>2}-{Data.cables_dict[nn][i]:>2}"
+                legend[key] = vp.vector(colors[0], colors[1], colors[2])
+        nn += 1
+    #print(legend)
+    return legend
+
+
+def increase_color(colors, delta):
+    """helper function for class Data"""
+    colors[2] += 1/delta
+    if colors[2] > 1:
+        colors[2] = 0
+        colors[1] += 1/delta
+        if colors[1] > 1:
+            colors[1] = 0
+            colors[0] += 1/delta
+    return colors
 
 def geo_to_local(lat):
     """vpythons z axis is looking south, therefore calculate latitude coordinate into vpythons z axis"""
@@ -3426,9 +3492,25 @@ def create_stuff2():
 
 def create_stuff():
     # right side legend
-    for i, name in Data.node_names.items():
-        vp.label(pixel_pos=True, pos=vp.vector(Sim.canvas_width,Sim.canvas_height - i * 22,0), text=f"{i}-{name}",
-                 color=vp.color.blue, align="right", font="monospace", line=False, box=False, )
+    #Sim.gui["legend_box"] =
+    Sim.gui["legend"] = []
+    print(Sim.legend)
+    h = Sim.canvas_height / len(Sim.legend)
+    for i, (legend_text, colorvector) in enumerate(Sim.legend.items()):
+        Sim.gui["legend"].append(vp.label(pixel_pos=True,
+                 pos=vp.vector(Sim.canvas_width,Sim.canvas_height - i * h-(h/2),0),
+                 text=legend_text,
+                 height=h-2,
+                 color=colorvector,
+                 align="right",
+                 font="monospace",
+                 line=False,
+                 box=False,
+                 opacity=1,
+                 background=vp.color.white,
+                ))
+
+
     # axis arrows with letters
     ### Sim.test_arrow = vp.arrow(pos=Sim.center + vp.vector(0,1,0), axis=vp.vector(0,-1,0), color=vp.color.black)
     Sim.axis_x = vp.arrow(pos=Sim.center, axis=vp.vector(0.1, 0, 0), color=vp.color.red, pickable=False)
@@ -4209,6 +4291,7 @@ def main():
 if __name__ == "__main__":
 
     Sim.scene.select()
+    Sim.legend = create_color_legend() # for Sim.legend
     create_stuff()
     Sim.scene2.select()
     create_stuff2()
