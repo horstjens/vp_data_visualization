@@ -6,7 +6,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.29.6"
+VERSION = "0.29.7"
 
 """
 uae geo 2:
@@ -357,7 +357,7 @@ class Sim:
     dragging = False
 
 
-
+    # main 3d view
     scene = vp.canvas(title=f'simulation version {VERSION}',
                       # caption="coordinates: ",
                       width=canvas_width, height=canvas_height,
@@ -366,33 +366,91 @@ class Sim:
                       align="left",  # caption is to the right?
                       )
 
+    # wheels
+    scene_dia0 = vp.canvas(#title="needle diagrams",
+                       width=250,
+                       #height=canvas_height,
+                       height=125,
+                       center=vp.vector(0, 0, 0),
+                       background=vp.color.gray(0.99),
+                       #align="right",
+                       align="left"
+                       )
+
+    # net frequency
     scene_dia1 = vp.canvas(
-        width=400,
-        height=250,
-        background=vp.color.white,
+        width=250,
+        height=125,
+        background=vp.color.gray(0.9),
     )
 
     scene_dia2 = vp.canvas(
-        width=400,
-        height=250,
+        width=250,
+        height=125,
         #background=vp.color.purple,
-        background=vp.color.white,
+        align="left",
+        background=vp.color.gray(0.85),
     )
 
+    scene_dia3 = vp.canvas(
+        width=250,
+        height=125,
+        # background=vp.color.purple,
+        background=vp.color.gray(0.8),
+    )
 
-    scene2 = vp.canvas(#title="needle diagrams",
-                       width=300,
-                       #height=canvas_height,
-                       height=200,
-                       center=vp.vector(0, 0, 0),
-                       background=vp.color.gray(0.6),
-                       align="right",
-                       )
+    scene_dia4 = vp.canvas(
+        width=250,
+        height=125,
+        align="left",
+        #background=vp.color.purple,
+        background=vp.color.gray(0.75),
+    )
 
+    scene_dia5 = vp.canvas(width=250,
+        height=125,
+        #align="left",
+        #background=vp.color.purple,
+        background=vp.color.gray(0.7),)
 
+    scene_dia6 = vp.canvas(width=250,
+                           height=125,
+                           align="left",
+                           # background=vp.color.purple,
+                           background=vp.color.gray(0.65), )
+
+    scene_dia7 = vp.canvas(width=250,
+                           height=125,
+                           # align="left",
+                           # background=vp.color.purple,
+                           background=vp.color.gray(0.6), )
+
+    scene_dia8 = vp.canvas(width=250,
+                           height=125,
+                           align="left",
+                           # background=vp.color.purple,
+                           background=vp.color.gray(0.55), )
+
+    scene_dia9 = vp.canvas(width=250,
+                           height=125,
+                           #align="left",
+                           # background=vp.color.purple,
+                           background=vp.color.gray(0.5), )
+
+    scene_dia10 = vp.canvas(width=250,
+                           height=125,
+                           align="left",
+                           # background=vp.color.purple,
+                           background=vp.color.gray(0.45), )
+
+    scene_dia11 = vp.canvas(width=250,
+        height=125,
+        #align="left",
+        #background=vp.color.purple,
+        background=vp.color.gray(0.4),)
 
     scene3 = vp.canvas(#title="gui",
-                      width=canvas_width+200,
+                      width=canvas_width+250+250,
                       height=20,
                       #center=center,
                       background = vp.color.orange)
@@ -1450,6 +1508,11 @@ def widget_func_nodes_base_h(b):
     Sim.base["nodes_h"] = b.number
     update_stuff()
 
+def widget_func_filter_combo(b):
+    print("index:", b.index)
+
+def widget_func_legend_combo(b):
+    print("index: ", b.index)
 
 def widget_func_load_preset(b):
     print("selected preset:", b.index, b.selected)
@@ -3425,24 +3488,25 @@ def mouse_move():
 
 def create_stuff2():
     # ----- frequence tachometer 200 x ? --------
-    Sim.scene2.select()
-    g = 1
-    for x in range(1):
+    Sim.scene_dia0.select()
+    #g = 1
+    for g, x in enumerate((0,70)):
         vp.cylinder(pos=vp.vector(x,0,0),radius=30, axis=vp.vector(0,0,1))
         Sim.needles.append(vp.arrow(pos=vp.vector(x,0,0), axis=vp.vector(0,25,0), color=vp.vector(0.25+ g*0.2,0,1)))
-        vp.label(pos=vp.vector(300/2,85,0), pixel_pos=True, text=f"network frequency", align="center",
-                 box=False,height=35, opacity=0, color=vp.color.orange)
-        Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-12,0), text="50 Hz", color=vp.color.black, height=48,
+        if x == 0:
+            vp.label(pos=vp.vector(300/2,85,0), pixel_pos=True, text=f"network frequency", align="center",
+                     box=False,height=35, opacity=0, color=vp.color.orange)
+            Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-12,0), text="50 Hz", color=vp.color.black, height=48,
                                              box=False, opacity=0)
-        Sim.gui["time_text"] = vp.label(pos=vp.vector(0, -25,0), text="time: 0 sec", color=vp.vector(0,0.5,0), height=25,
-                                        box=False, opacity=0, align="center")
-        vp.label(pos=vp.vector(0,28,0), text="50.0", align="center", box=False, opacity=0, color=vp.color.black)
-        vp.label(pos=vp.vector(-27,0,0), text="49.9", align="right", box=False, opacity=0, color=vp.color.black)
-        vp.label(pos=vp.vector(27,0,0), text="50.1", align="left", box=False, opacity=0, color=vp.color.black)
-        g += 1
+            Sim.gui["time_text"] = vp.label(pos=vp.vector(0, -25,0), text="time: 0 sec", color=vp.vector(0,0.5,0), height=25,
+                                            box=False, opacity=0, align="center")
+            vp.label(pos=vp.vector(0,28,0), text="50.0", align="center", box=False, opacity=0, color=vp.color.black)
+            vp.label(pos=vp.vector(-27,0,0), text="49.9", align="right", box=False, opacity=0, color=vp.color.black)
+            vp.label(pos=vp.vector(27,0,0), text="50.1", align="left", box=False, opacity=0, color=vp.color.black)
+        #g += 1
     # ------ frequency-diagram (400x250) -> 200 x 100
     Sim.scene_dia1.select()
-    Sim.scene_dia1.append_to_title("network frequency")
+    #Sim.scene_dia1.append_to_title("network frequency")
     y_axis = vp.arrow(pos=vp.vector(0,0,0), axis=vp.vector(0,110,0), color=vp.color.black, shaftwidth=1, headlength=8)
     y_label = vp.label(pos=vp.vector(0,115,0), text="Hz (network frequency)",color=vp.color.black, box=False, opacity=0, align="left")
     x_axis = vp.arrow(pos=vp.vector(0,0,0), axis=vp.vector(210,0,0), color=vp.color.black, shaftwidth=1, headlength=8)
@@ -3480,14 +3544,40 @@ def create_stuff2():
     #Sim.scene_dia1.autoscale = True
     # --------- volt diagram for all nodes ------------
     Sim.scene_dia2.select()
-    Sim.scene_dia2.append_to_title("Nodes")
+    #Sim.scene_dia2.append_to_title("Nodes")
     # canvas is only displayed if some 3d object is IN the canvas!
     minmaxy = int(Data.nodes_max) + 1 - int(Data.nodes_min)
     print("minmaxy voltage", minmaxy)
-    #vp.pyramid()
+    vp.pyramid()
+    Sim.scene_dia3.select()
+    vp.sphere()
+    Sim.scene_dia4.select()
+    vp.box()
+    Sim.scene_dia5.select()
+    vp.cylinder()
+    Sim.scene_dia6.select()
+    vp.cone()
+    Sim.scene_dia7.select()
+    vp.arrow()
+    Sim.scene_dia8.select()
+    vp.ellipsoid()
+    Sim.scene_dia9.select()
+    vp.ring()
+    Sim.scene_dia10.select()
+    vp.helix()
+    Sim.scene_dia11.select()
+    vp.box()
+    Sim.scene_dia11.append_to_caption("legend:")
+    Sim.gui["legend_combo"] = vp.menu(pos=Sim.scene_dia11.caption_anchor,
+                                      bind=widget_func_legend_combo,
+                                      choices=["show", "half", "hide"], )
+    Sim.scene_dia11.append_to_caption(" Filter: ")
+    Sim.gui["filter_combo"] = vp.menu(pos=Sim.scene_dia11.caption_anchor,
+                                      bind=widget_func_filter_combo,
+                                      choices=["Generators", "Loads", "Nodes","Cables", "Storages"])
 
-    Sim.scene_dia2.append_to_caption("Nodes (numbers or names or *) >>>")
-    Sim.gui["dia2"] = vp.winput(bind=widget_func_dia2, type="string", text="*", )
+    #Sim.scene_dia2.append_to_caption("Nodes (numbers or names or *) >>>")
+    #Sim.gui["dia2"] = vp.winput(bind=widget_func_dia2, type="string", text="*", )
 
 
 def create_stuff():
@@ -3980,7 +4070,7 @@ def update_stuff():
     # ---- frequency
     f = Data.df["frequency"][Sim.i]
     sec = Data.df["time"][Sim.i]
-    Sim.scene2.select()
+    Sim.scene_dia0.select()
     Sim.gui["frequency_text"].text = f"{f:.2f} Hz"
     Sim.gui["time_text"].text = f"time: {sec:.2f} sec"
     # 50 hz...needle points north.
@@ -4241,9 +4331,9 @@ def main():
     Sim.scene.bind("mousemove", mouse_move)
     Sim.scene.bind("mouseup", mousebutton_up)
 
-    Sim.scene2.userzoom = False
-    Sim.scene2.userspin = False
-    Sim.scene2.userpan = False
+    Sim.scene_dia0.userzoom = False
+    Sim.scene_dia0.userspin = False
+    Sim.scene_dia0.userpan = False
 
     Sim.scene_dia1.userspin = False
 
@@ -4293,7 +4383,7 @@ if __name__ == "__main__":
     Sim.scene.select()
     Sim.legend = create_color_legend() # for Sim.legend
     create_stuff()
-    Sim.scene2.select()
+    Sim.scene_dia0.select()
     create_stuff2()
 
     #Sim.scene.select()
