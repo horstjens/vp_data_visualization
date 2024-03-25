@@ -6,7 +6,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.29.7"
+VERSION = "0.29.8"
 
 """
 uae geo 2:
@@ -321,14 +321,19 @@ class Sim:
     axis_z = None
     flying_while_paused = False  # arrows fly also in pause mode
     test_arrow = None
-    canvas_width = 1200
-    canvas_height = 400+250+250
+    canvas_width = 1200 # 3d canvas
+    canvas_height = 900 # 3d canvas
+    dia_width = 250     # for the 12 little diagrams on the right side
+    dia_height = 125    # for the 12 little diagrams on the right side
     mode = "arrange"
     camera_height = 0.25
     camera_range = 1.75
     camera_pitch = -90
     shortest_subcable = None
-    legend = {}
+    legend = {} # nodenumber node_shorstname (from-to) : color-vector
+    legend_nodes = {} #node_number : color_vector
+    legend_cables = {} # (from,to) : color_vector
+    dia_tick_color = vp.color.black
     #legend = create_color_legend()  # dictionary
 
 
@@ -368,9 +373,9 @@ class Sim:
 
     # wheels
     scene_dia0 = vp.canvas(#title="needle diagrams",
-                       width=250,
+                       width=dia_width,
                        #height=canvas_height,
-                       height=125,
+                       height=dia_height,
                        center=vp.vector(0, 0, 0),
                        background=vp.color.gray(0.99),
                        #align="right",
@@ -379,78 +384,78 @@ class Sim:
 
     # net frequency
     scene_dia1 = vp.canvas(
-        width=250,
-        height=125,
+        width=dia_width,
+        height=dia_height,
         background=vp.color.gray(0.9),
     )
 
     scene_dia2 = vp.canvas(
-        width=250,
-        height=125,
+        width=dia_width,
+        height=dia_height,
         #background=vp.color.purple,
         align="left",
         background=vp.color.gray(0.85),
     )
 
     scene_dia3 = vp.canvas(
-        width=250,
-        height=125,
+        width=dia_width,
+        height=dia_height,
         # background=vp.color.purple,
         background=vp.color.gray(0.8),
     )
 
     scene_dia4 = vp.canvas(
-        width=250,
-        height=125,
+        width=dia_width,
+        height=dia_height,
         align="left",
         #background=vp.color.purple,
         background=vp.color.gray(0.75),
     )
 
-    scene_dia5 = vp.canvas(width=250,
-        height=125,
+    scene_dia5 = vp.canvas(width=dia_width,
+        height=dia_height,
         #align="left",
         #background=vp.color.purple,
         background=vp.color.gray(0.7),)
 
-    scene_dia6 = vp.canvas(width=250,
-                           height=125,
+    scene_dia6 = vp.canvas(width=dia_width,
+                           height=dia_height,
                            align="left",
                            # background=vp.color.purple,
                            background=vp.color.gray(0.65), )
 
-    scene_dia7 = vp.canvas(width=250,
-                           height=125,
+    scene_dia7 = vp.canvas(width=dia_width,
+                           height=dia_height,
                            # align="left",
                            # background=vp.color.purple,
                            background=vp.color.gray(0.6), )
 
-    scene_dia8 = vp.canvas(width=250,
-                           height=125,
+    scene_dia8 = vp.canvas(width=dia_width,
+                           height=dia_height,
                            align="left",
                            # background=vp.color.purple,
                            background=vp.color.gray(0.55), )
 
-    scene_dia9 = vp.canvas(width=250,
-                           height=125,
+    scene_dia9 = vp.canvas(width=dia_width,
+                           height=dia_height,
                            #align="left",
                            # background=vp.color.purple,
                            background=vp.color.gray(0.5), )
 
-    scene_dia10 = vp.canvas(width=250,
-                           height=125,
+    scene_dia10 = vp.canvas(width=dia_width,
+                           height=dia_height,
                            align="left",
                            # background=vp.color.purple,
                            background=vp.color.gray(0.45), )
 
-    scene_dia11 = vp.canvas(width=250,
-        height=125,
+    scene_dia11 = vp.canvas(width=dia_width,
+        height=dia_height,
         #align="left",
         #background=vp.color.purple,
         background=vp.color.gray(0.4),)
 
-    scene3 = vp.canvas(#title="gui",
-                      width=canvas_width+250+250,
+    scene3 = vp.canvas(#title="orange message area",
+                      width=canvas_width+dia_width * 2,
                       height=20,
                       #center=center,
                       background = vp.color.orange)
@@ -932,18 +937,22 @@ def create_color_legend():
         key = f"{nn:>2} {Data.node_names[nn]}"
         if nn not in Data.cables_dict:
             key += "      "
-            legend[key] = vp.vector(colors[0], colors[1], colors[2])
+            #legend[key] = vp.vector(colors[0], colors[1], colors[2])
+            Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
         else:
             for i, v in enumerate(Data.cables_dict[nn]):
+                Sim.legend_cables[(i,v)] = vp.vector(colors[0], colors[1], colors[2])
                 if i == 0:
+                    Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
                     key += f" {nn:>2}-{Data.cables_dict[nn][i]:>2}"
                 else:
                     colors = increase_color(colors, delta)
                     key = f"        {nn:>2}-{Data.cables_dict[nn][i]:>2}"
-                legend[key] = vp.vector(colors[0], colors[1], colors[2])
+        #legend[key] = vp.vector(colors[0], colors[1], colors[2])
+        Sim.legend[key] = vp.vector(colors[0], colors[1], colors[2])
         nn += 1
     #print(legend)
-    return legend
+    #return legend
 
 
 def increase_color(colors, delta):
@@ -3487,6 +3496,9 @@ def mouse_move():
 
 
 def create_stuff2():
+    #dia_width = 250     # for the 12 little diagrams on the right side
+
+    #dia_height = 125    # for the 12 little diagrams on the right side
     # ----- frequence tachometer 200 x ? --------
     Sim.scene_dia0.select()
     #g = 1
@@ -3494,23 +3506,25 @@ def create_stuff2():
         vp.cylinder(pos=vp.vector(x,0,0),radius=30, axis=vp.vector(0,0,1))
         Sim.needles.append(vp.arrow(pos=vp.vector(x,0,0), axis=vp.vector(0,25,0), color=vp.vector(0.25+ g*0.2,0,1)))
         if x == 0:
-            vp.label(pos=vp.vector(300/2,85,0), pixel_pos=True, text=f"network frequency", align="center",
+            vp.label(pos=vp.vector(Sim.dia_width/2,Sim.dia_height/4,0), pixel_pos=True, text=f"network frequency", align="center",
                      box=False,height=35, opacity=0, color=vp.color.orange)
             Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-12,0), text="50 Hz", color=vp.color.black, height=48,
                                              box=False, opacity=0)
-            Sim.gui["time_text"] = vp.label(pos=vp.vector(0, -25,0), text="time: 0 sec", color=vp.vector(0,0.5,0), height=25,
-                                            box=False, opacity=0, align="center")
+            #Sim.gui["time_text"] = vp.label(pos=vp.vector(0, -25,0), text="time: 0 sec", color=vp.vector(0,0.5,0), height=25,
+            #                                box=False, opacity=0, align="center")
             vp.label(pos=vp.vector(0,28,0), text="50.0", align="center", box=False, opacity=0, color=vp.color.black)
             vp.label(pos=vp.vector(-27,0,0), text="49.9", align="right", box=False, opacity=0, color=vp.color.black)
             vp.label(pos=vp.vector(27,0,0), text="50.1", align="left", box=False, opacity=0, color=vp.color.black)
         #g += 1
+
     # ------ frequency-diagram (400x250) -> 200 x 100
+
     Sim.scene_dia1.select()
     #Sim.scene_dia1.append_to_title("network frequency")
-    y_axis = vp.arrow(pos=vp.vector(0,0,0), axis=vp.vector(0,110,0), color=vp.color.black, shaftwidth=1, headlength=8)
+    y_axis = vp.curve(pos=[vp.vector(0,0,0), vp.vector(0,110,0)], color=vp.color.black)
     y_label = vp.label(pos=vp.vector(0,115,0), text="Hz (network frequency)",color=vp.color.black, box=False, opacity=0, align="left")
-    x_axis = vp.arrow(pos=vp.vector(0,0,0), axis=vp.vector(210,0,0), color=vp.color.black, shaftwidth=1, headlength=8)
-    x_label = vp.label(pos=vp.vector(200,-18,0), text="time (s)", color=vp.color.black, box=False, opacity=0, align="right")
+    x_axis = vp.curve(pos=[vp.vector(0,0,0), vp.vector(210,0,0)], color=vp.color.black)
+    #x_label = vp.label(pos=vp.vector(200,-8,0), text="time (s)", color=vp.color.black, box=False, opacity=0, align="right")
     # grid
     minmax_y = int(Data.frequency_max) + 1 - int(Data.frequency_min)
     minmax_x = int(Data.time_max) +1 - int(Data.time_min)
@@ -3518,15 +3532,19 @@ def create_stuff2():
 
         c = vp.color.gray(0.8)
         if x % 50 == 0:
-            vp.label(pos=vp.vector(x, -8, 0), text=f"{x/200*minmax_x+int(Data.time_min):.2f}", height=10, box=False, opacity=0)
-            c = vp.color.gray(0.3)
-        vp.curve(pos=[vp.vector(x, 0, 0), vp.vector(x, 100, 0)], color=c, )
+            vp.label(pos=vp.vector(x, -20, 0), text=f"{x/200*minmax_x+int(Data.time_min):.2f}", height=10, box=False, opacity=0,
+                     color=Sim.dia_tick_color)
+            #c = vp.color.gray(0.3)
+            vp.curve(pos=[vp.vector(x, -3,0), vp.vector(x, 3,0)], color=Sim.dia_tick_color)
+        #vp.curve(pos=[vp.vector(x, 0, 0), vp.vector(x, 100, 0)], color=Sim.dia_tick_color, )
     for y in range(0,101,10):
         c = vp.color.gray(0.8)
         if y % 50 == 0:
-            vp.label(pos=vp.vector(-8, y, 0), text=f"{y/100*minmax_y+int(Data.frequency_min):.2f}", height=10, box=False, opacity=0)
-            c = vp.color.gray(0.3)
-        vp.curve(pos=[vp.vector(0, y, 0), vp.vector(200, y, 0)], color=c, )
+            vp.label(pos=vp.vector(-15, y, 0), text=f"{y/100*minmax_y+int(Data.frequency_min):.2f}", height=10, box=False, opacity=0,
+                     color=Sim.dia_tick_color)
+            #c = vp.color.gray(0.3)
+            vp.curve(pos=[vp.vector(-3,y,0), vp.vector(3,y,0)], color=Sim.dia_tick_color)
+        #vp.curve(pos=[vp.vector(0, y, 0), vp.vector(200, y, 0)], color=Sim.dia_tick_color, )
     fdata = []
     #minmax_y = int(Data.frequency_max)+1 - int(Data.frequency_min)
     for i, sec in enumerate(Data.df["time"]):
@@ -3542,13 +3560,76 @@ def create_stuff2():
     Sim.scene_dia1.center = vp.vector(100,50,0)
     Sim.scene_dia1.camera.range = 100
     #Sim.scene_dia1.autoscale = True
-    # --------- volt diagram for all nodes ------------
+
+    # --------- volt diagram for all nodes ------------ node voltage xy
+
     Sim.scene_dia2.select()
+
+    y_axis = vp.curve(pos=[vp.vector(0, 0, 0),vp.vector(0, 110, 0)], color=vp.color.black, )
+    y_label = vp.label(pos=vp.vector(0, 115, 0), text="Volt (nodes)", color=vp.color.black, box=False,
+                       opacity=0, align="left")
+    x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
+    #x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
+    #                   align="right")
+    # grid
+    #minmax_y = int(Data.frequency_max) + 1 - int(Data.frequency_min)
+    minmax_y = Data.nodes_max  - Data.nodes_min
+    minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
+    print("voltage minmax y min max", minmax_y, Data.nodes_min, Data.nodes_max)
+    for x in range(0, 201, 10):
+
+        #c = vp.color.gray(0.8)
+        if x % 50 == 0:
+            vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
+                     box=False, opacity=0, color=Sim.dia_tick_color)
+            #c = vp.color.gray(0.3)
+            vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
+
+        #vp.curve(pos=[vp.vector(x, 0, 0), vp.vector(x, 100, 0)], color=Sim.dia_tick_color, )
+    for y in range(0, 101, 10):
+        #c = vp.color.gray(0.8)
+        if y % 50 == 0:
+            vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
+                     box=False, opacity=0, color=Sim.dia_tick_color)
+            #c = vp.color.gray(0.3)
+            vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
+        #vp.curve(pos=[vp.vector(0, y, 0), vp.vector(200, y, 0)], color=Sim.dia_tick_color, )
+    Sim.gui["node_curves"] = {} # node_number: curve
+    for col_name in [name for name in Data.col_names if name.startswith("VOLT_")]:
+        node_number = int(col_name.split("_")[1])
+        fdata = []
+        #mi = df[col_name].min()
+        #ma = df[col_name].max()
+
+        #fdata = []
+        minmax_y = Data.nodes_max - Data.nodes_min
+        for i, sec in enumerate(Data.df["time"]):
+            f = (Data.df[col_name][i] - Data.nodes_min) / minmax_y  # 0 ... 1
+            y = f * 100
+            x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
+            x = x * 200
+            fdata.append(vp.vector(x, y, 0))
+        # f=[vp.vector(*a) for a in zip(Data.df["time"]*10, Data.df["frequency"], [0 for i in Data.df["time"]] )]
+        # find correct color from node number for curve
+
+        Sim.gui["node_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
+        print("plotting voltage curve for", node_number)
+    #print(Sim.gui["node_c"])
+    Sim.time_indicator_dia2 = vp.curve(canvas=Sim.scene_dia2, color=vp.color.green,
+                                       pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
+    Sim.scene_dia2.center = vp.vector(100, 50, 0)
+    Sim.scene_dia2.camera.range = 100
+
+
+
+
+
     #Sim.scene_dia2.append_to_title("Nodes")
     # canvas is only displayed if some 3d object is IN the canvas!
     minmaxy = int(Data.nodes_max) + 1 - int(Data.nodes_min)
-    print("minmaxy voltage", minmaxy)
-    vp.pyramid()
+    #print("minmaxy voltage", minmaxy)
+    #vp.pyramid()
+    # ----------------------------------------------------------
     Sim.scene_dia3.select()
     vp.sphere()
     Sim.scene_dia4.select()
@@ -4072,7 +4153,7 @@ def update_stuff():
     sec = Data.df["time"][Sim.i]
     Sim.scene_dia0.select()
     Sim.gui["frequency_text"].text = f"{f:.2f} Hz"
-    Sim.gui["time_text"].text = f"time: {sec:.2f} sec"
+    #Sim.gui["time_text"].text = f"time: {sec:.2f} sec"
     # 50 hz...needle points north.
     # 49.9 ...neelde points west
     # 50.1 ...needle points east
@@ -4087,8 +4168,11 @@ def update_stuff():
     minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
     x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
     x = x * 200
-    Sim.time_indicator_dia1.modify(0, pos=vp.vector(x, 0, 0))
-    Sim.time_indicator_dia1.modify(1, pos=vp.vector(x, 110, 0))
+    for green_vertical_bar in (Sim.time_indicator_dia1, Sim.time_indicator_dia2):
+        #Sim.time_indicator_dia1.modify(0, pos=vp.vector(x, 0, 0))
+        #Sim.time_indicator_dia1.modify(1, pos=vp.vector(x, 110, 0))
+        green_vertical_bar.modify(0, pos=vp.vector(x,0,0))
+        green_vertical_bar.modify(1, pos=vp.vector(x, 110, 0))
 
 
     Sim.scene.select()
@@ -4381,7 +4465,8 @@ def main():
 if __name__ == "__main__":
 
     Sim.scene.select()
-    Sim.legend = create_color_legend() # for Sim.legend
+    #Sim.legend = create_color_legend() # for Sim.legend
+    create_color_legend()  # for Sim.legend, Sim.legend_nodes, Sim.legend_cables
     create_stuff()
     Sim.scene_dia0.select()
     create_stuff2()
