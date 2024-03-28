@@ -6,7 +6,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.0"
+VERSION = "0.30.1"
 
 """
 uae geo 2:
@@ -119,6 +119,7 @@ class Data:
     nodes = {}  # node_number: (lat, long, is_generator, is_load, is_storage)
     node_geo = {}
     node_names = {} # node_number: node_name
+    node_names2 = {} # node_name: node_number
     #node_colors = {} # (node_numbeR (from), node_number (to)  : color (for diagram legend)
     loads = [] # node_number
     storages = [] # storage_number
@@ -131,6 +132,7 @@ class Data:
     for node_number in node_numbers:
         line_number = node_number - 1
         node_names[node_number] = df_locations.iloc[line_number]["name"]
+        node_names2[node_names[node_number]] = node_number
         # get latitude, longitude
         lat = df_locations.iloc[line_number]["latitude"]
         lon = df_locations.iloc[line_number]["longitude"]
@@ -925,10 +927,10 @@ def create_color_legend():
     number_of_cables = 0
     for k, v in Data.cables_dict.items():
         number_of_cables += len(v)
-    print("number of cables:", number_of_cables)
+    #print("number of cables:", number_of_cables)
     number_of_colors = number_of_cables + len(nodes_without_cable)
     delta = int(number_of_colors**(1/3))
-    print("number of colors:", number_of_colors)
+    #print("number of colors:", number_of_colors)
     nn = min(node_numbers)
     colors = [0,0,0]
     legend = {}
@@ -1518,10 +1520,73 @@ def widget_func_nodes_base_h(b):
     update_stuff()
 
 def widget_func_filter_combo(b):
-    print("index:", b.index)
+    """
+    Sim.gui["filter_combo"]
+    ["Nodes", "Generators", "Loads","Storages" ,"Cables", ]
+    """
+    #print("index:", b.index)
+    if b.index == 0: # Nodes
+        print("node curves are: ", list(Sim.gui["node_curves"].keys()))
+        visible_node_numbers =  [n for n in Sim.gui["node_curves"].keys() if Sim.gui["node_curves"][n].visible]
+        if len(visible_node_numbers) == len(Data.node_numbers):
+            t = "all"
+        elif len(visible_node_numbers) == 0:
+            t = "none"
+        else:
+            t = " ".join([str(n) for n in visible_node_numbers])
+        Sim.gui["filter_text"].text = t
+
+def widget_func_filter_text(b):
+    """
+    Sim.gui["filter_text"]
+    """
+
+    print("text entered into filter was:", b.text)
+    curvedict =  {
+       "Nodes": ( "node_curves", ),
+       "Loads": ( "load_curves",),
+       "Generators": ( "generator_angle_curves", "generator_power_curves", "generator_loading_curves" ),
+       "Storages" : ("storage_power_curves", "storage_loading_curves","storage_state_curves" ),
+       "Cables": ( "cable_loading_curves", "cable_power_curves" ),
+    }
+    for node_type, curvenames in curvedict.items():
+        if Sim.gui["filter_combo"].selected == node_type: # "Nodes":
+            for curvename in curvenames:
+                if b.text.lower() in ("none", "0", "nothing", "clear"):
+                    for node_number, curve in Sim.gui[curvename].items():
+                        curve.visible = False
+                elif b.text.lower() in ("all", "*"):
+                    for node_number, curve in Sim.gui[curvename].items():
+                        curve.visible = True
+                elif len(b.text) > 0:
+                    filterwords = b.text
+                    # replace commas with space
+                    filterwords = filterwords.replace(",", " ")
+                    filterwords = [word for word in filterwords.split(" ") if len(word) > 0]
+                    filternumbers = []
+                    for word in filterwords:
+                        if word.isdigit() and int(word) in Data.node_numbers:
+                            filternumbers.append(int(word))
+                        elif word.upper() in Data.node_names2:
+                            filternumbers.append(Data.node_names2[word.upper()])
+                    b.text= " ".join([str(i) for i in filternumbers])
+                    for node_number, curve in Sim.gui[curvename].items():
+                        if node_number in filternumbers:
+                            curve.visible = True
+                        else:
+                            curve.visible = False
+            break # not necessary any more to test other node types
+
+
 
 def widget_func_legend_combo(b):
-    print("index: ", b.index)
+    #print("index: ", b.index) # 0.... show, 1 .... hide
+    for textlabel in Sim.gui["legend"]:
+        if b.index == 0:
+            textlabel.visible = True
+        elif b.index == 1:
+            textlabel.visible = False
+
 
 def widget_func_load_preset(b):
     print("selected preset:", b.index, b.selected)
@@ -4052,11 +4117,18 @@ def create_stuff2():
     Sim.scene_dia11.append_to_caption("legend:")
     Sim.gui["legend_combo"] = vp.menu(pos=Sim.scene_dia11.caption_anchor,
                                       bind=widget_func_legend_combo,
-                                      choices=["show", "half", "hide"], )
+                                      choices=["show","hide"], ) # half?
     Sim.scene_dia11.append_to_caption(" Filter: ")
     Sim.gui["filter_combo"] = vp.menu(pos=Sim.scene_dia11.caption_anchor,
                                       bind=widget_func_filter_combo,
-                                      choices=["Generators", "Loads", "Nodes","Cables", "Storages"])
+                                      choices=["Nodes", "Generators", "Loads","Storages" ,"Cables", ])
+    Sim.scene_dia11.append_to_caption("\n")
+    Sim.gui["filter_text"] = vp.winput(pos=Sim.scene_dia11.caption_anchor,
+                                       bind=widget_func_filter_text,
+                                       type="string",
+                                       width=Sim.dia_width*2,  # because 2 columns of diagrams at the right
+                                       text="all nodes",
+                                       )
 
     #Sim.scene_dia2.append_to_caption("Nodes (numbers or names or *) >>>")
     #Sim.gui["dia2"] = vp.winput(bind=widget_func_dia2, type="string", text="*", )
