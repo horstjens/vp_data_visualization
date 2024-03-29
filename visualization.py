@@ -7,7 +7,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.2"
+VERSION = "0.30.3"
 
 """
 uae geo 2:
@@ -520,17 +520,17 @@ class Sim:
               "storages_r": 1.0,
               }
     base = {"generators_h": 0.0,
-            "generators_r": 0.02,
+            "generators_r": 0.01,
             "nodes_h": 0.0,
-            "nodes_r": 0.02,
+            "nodes_r": 0.01,
             "loads_h": 0.0,
-            "loads_r": 0.02,
+            "loads_r": 0.01,
             "cables_h": 0.03,
-            "cables_r": 0.03,
+            "cables_r": 0.005,
             "middles_h": 0.0,
-            "middles_r": 0.015,
+            "middles_r": 0.005,
             "storages_h": 0.0,
-            "storages_r": 0.02,
+            "storages_r": 0.01,
             "flying_arrows_length": 0.05,  # lenght of a flying arrow in world coordinate units
             "flying_arrows_distance": 2,  # distance in arrow_lengths between 2 arrows
             }
@@ -2270,8 +2270,11 @@ def widget_func_start_simulation(b):
 
 
 def layout_save():  # not a button anymore, therefore no parameter b. function get executed by widget_func_start_simulation()
-    """save pos for each: generator, node, subnode, load. Save pointlist for each sub_cable"""
+    """save pos for each: generator, node, subnode, load, storage. Save pointlist for each sub_cable"""
     with open("clean_layout_data.txt", "w") as myfile:
+        myfile.write("#storages\n")
+        for i, sto in Sim.storages.items():
+            myfile.write(f"{i} {sto.pos.x} {sto.pos.y} {sto.pos.z}\n")
         myfile.write("#generators\n")
         for i, gen in Sim.generators.items():
             myfile.write(f"{i} {gen.pos.x} {gen.pos.y} {gen.pos.z}\n")
@@ -2348,6 +2351,7 @@ def layout_load():
             # case None:
             continue
 
+
         elif mode == "curves":
             i, j, k, x, y, z = [float(word) for word in line.split(" ")]
             i, j, k = int(i), int(j), int(k)
@@ -2370,8 +2374,9 @@ def layout_load():
             # node has attached generator?
             ###Data.generators = {}  # gen_number: node_number
             ###Data.nodes = {node_number: (x,z,gen_number,load_number)
-            if number in Data.generators.values():
-                gen_number = Data.nodes[number][2]
+            if number in Data.generators:
+                #gen_number = Data.nodes[number][2]
+                gen_number = number
 
                 # if number in Sim.generator_lines:
                 Sim.generator_lines[gen_number].modify(0, npos)
@@ -2407,6 +2412,18 @@ def layout_load():
             Sim.labels[f"load {number}"].pos = lpos
             Sim.letters[f"load {number}"].pos = lpos + Sim.loads[number].axis
             Sim.load_lines[number].modify(1, pos=lpos)
+
+        elif mode == "storages":
+            number, x, y, z = [float(word) for word in line.split(" ")]
+            number = int(number)
+            spos = vp.vector(x,y,z)
+            Sim.storages[number].pos = spos
+            Sim.labels[f"storage {number}"].pos = spos
+            Sim.letters[f"storage {number}"].pos = spos + Sim.storages[number].axis
+            Sim.storage_lines[number].modify(1, pos=spos)
+
+
+
         elif mode == "middles":
             i, j, x, y, z = [float(word) for word in line.split(" ")]
             i, j = int(i), int(j)
@@ -4305,7 +4322,7 @@ def create_stuff():
     # ============== create nodes (busbars) according to geodata =============
 
 
-    print("----------------")
+    #print("----------------")
 
 
     for node_number in Data.node_numbers:
@@ -4334,14 +4351,14 @@ def create_stuff():
                                         )
         Sim.nodes[node_number].what = "node"
         Sim.nodes[node_number].number = node_number
-        Sim.letters[f"node {node_number}"] = vp.label(text=f"N{node_number}\n{name} ", color=vp.color.white,
+        Sim.letters[f"node {node_number}"] = vp.label(text=f"{name}", color=vp.color.white,
                                                  pos=npos,  # + vp.vector(0, Sim.base["nodes_r"], 0),
                                                  opacity=0.0,
                                                  box=False,
                                                  # billboard=True, emissive=True,
                                                  pickable=False, align="center")
         Sim.labels[f"node {node_number}"] = vp.label(pos=npos,
-                                                text=f"n {node_number}\n{name}", height=10,
+                                                text="n", height=10,
                                                 color=vp.color.white,
                                                 yoffset=-30,
                                                 line=False,
@@ -4361,14 +4378,14 @@ def create_stuff():
             Sim.storages[node_number].number = node_number  # storage number
             # gnumber = Data.nodes_to_generators[number]
             # Sim.generators[is_generator].node_number = number  # corresponding node number
-            Sim.letters[f"storage {node_number}"] = vp.label(text=f"S{node_number}\n{name})", color=vp.color.white,
+            Sim.letters[f"storage {node_number}"] = vp.label(text=f"{name.lower()})", color=vp.color.white,
                                                                pos=spos + vp.vector(0, Sim.base["storages_r"], 0),
                                                                opacity=0.0, box=False,
                                                                # billboard=True, emissive=True,
                                                                pickable=False, align="center")
 
             Sim.labels[f"storage {node_number}"] = vp.label(pos=spos,
-                                                              text=f"s {node_number} {name}",
+                                                              text=f"s",
                                                               height=10,
                                                               color=vp.color.white,
                                                               visible=False,
@@ -4407,14 +4424,14 @@ def create_stuff():
             Sim.generators[node_number].number = node_number  # generator_number
             # gnumber = Data.nodes_to_generators[number]
             #Sim.generators[is_generator].node_number = number  # corresponding node number
-            Sim.letters[f"generator {node_number}"] = vp.label(text=f"G{node_number}\n{name})", color=vp.color.white,
+            Sim.letters[f"generator {node_number}"] = vp.label(text=f"{name.lower()}", color=vp.color.white,
                                                                 pos=gpos + vp.vector(0, Sim.base["generators_r"], 0),
                                                                 opacity=0.0, box=False,
                                                                 # billboard=True, emissive=True,
                                                                 pickable=False, align="center")
 
             Sim.labels[f"generator {node_number}"] = vp.label(pos=gpos,
-                                                               text=f"g {node_number} {name}",
+                                                               text="g",
                                                                height=10,
                                                                color=vp.color.white,
                                                                visible=False,
@@ -4468,14 +4485,14 @@ def create_stuff():
                                             pickable=True)
             Sim.loads[node_number].what = "load"
             Sim.loads[node_number].number = node_number
-            Sim.letters[f"load {node_number}"] = vp.label(text=f"L{node_number}\n{name}", color=vp.color.white,
+            Sim.letters[f"load {node_number}"] = vp.label(text=f"{name.lower()}", color=vp.color.white,
                                                      pos=lpos + vp.vector(0, Sim.base["loads_r"], 0),
                                                      opacity=0.0,
                                                      box=False,
                                                      # billboard=True, emissive=True,
                                                      pickable=False, align="center")
             Sim.labels[f"load {node_number}"] = vp.label(pos=npos,
-                                                    text=f"l {node_number} {name}", height=10,
+                                                    text="l", height=10,
                                                     color=vp.color.white,
                                                     yoffset=-30,
                                                     line=False,
@@ -4511,7 +4528,7 @@ def create_stuff():
             Sim.cables_middle[(i, j)].what = "middle"
             Sim.cables_middle[(i, j)].number = (i, j)
             Sim.letters[f"cable {i}-{j}"] = vp.label(pos=mpos,
-                                                     text=f"c {i}-{j}",
+                                                     text=f"{i}-{j}",
                                                      height=10,
                                                      box=False,
                                                      opacity=0,
@@ -4521,7 +4538,7 @@ def create_stuff():
                                                      )
             Sim.labels[f"cable {i}-{j}"] = vp.label(pos=mpos,
                                                     line=False,
-                                                    text=f"c {i}-{j}",
+                                                    text="c",
                                                     height=10,
                                                     yoffset=-20,
                                                     box=False,
@@ -5058,8 +5075,8 @@ if __name__ == "__main__":
 
     create_stuff2() # preperation (full curves are plotted from start button function)
 
-    #Sim.scene.select()
-    #layout_load()
+    Sim.scene.select()
+    layout_load()
 
     Sim.scene3.select()
 
