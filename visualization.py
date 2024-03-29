@@ -1,12 +1,13 @@
 import os.path
-import csv
-# import random
+#import csv
+import random
+import colorsys
 # non-standard-lib
 import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.1"
+VERSION = "0.30.2"
 
 """
 uae geo 2:
@@ -167,6 +168,7 @@ class Data:
         print(k,":",v[0],v[1])
     print("--------------------------------")
     # take some interesting columns (called 'series' in pandas)
+    print("cables:", cables_dict)
 
     time_min = df["time"].min()
     time_max = df["time"].max()
@@ -880,6 +882,19 @@ class FlyingArrow(vp.arrow):
 
 
 # helper functions for calculating loading value
+# from https://stackoverflow.com/a/9701141
+def get_colors(num_colors):
+    """returns a list of colors as vp.vectors"""
+    colors=[]
+    i = 0
+    while i <= 360:
+        hue = i/360.
+        lightness = (50 + random.random()*10)/100.
+        saturation = (90 + random.random() * 10)/100.
+        c =colorsys.hls_to_rgb(hue, lightness, saturation)
+        colors.append(vp.vector(c[0], c[1], c[2]))
+        i+= 360 / num_colors
+    return colors
 
 
 def col_name_angle(generator_number):
@@ -918,41 +933,128 @@ def create_color_legend():
     number_of_nodes = len(node_numbers)
     # nodes without cable as source:
     nodes_without_cable = [] # without cable source
-    for n in Data.node_numbers:
-        if n not in Data.cables_dict:
-            nodes_without_cable.append(n)
-    #nodes_without_cable = [i for i in node_numbers if i not in cables_dict]
-    print("number of nodes:", number_of_nodes)
-    print("nodes without cable source:", nodes_without_cable)
-    number_of_cables = 0
-    for k, v in Data.cables_dict.items():
-        number_of_cables += len(v)
-    #print("number of cables:", number_of_cables)
-    number_of_colors = number_of_cables + len(nodes_without_cable)
-    delta = int(number_of_colors**(1/3))
-    #print("number of colors:", number_of_colors)
+    cable_tuples = []
+    for n1 in Data.node_numbers:
+        for k, vlist in Data.cables_dict.items():
+            vlist.sort()
+            for v in vlist:
+                if (k==n1) and (v > n1):
+                    cable_tuples.append((k, v))
+                if (v==n1) and (k > n1):
+                    cable_tuples.append((v, k))
+    cable_tuples.sort()
+    #print("cable tuples:", cable_tuples)
+    naked_nodes = []
+    for nn in Data.node_numbers:
+        found = False
+        for n1,n2 in cable_tuples:
+            if n1 == nn:
+                found = True
+                break
+        if not found:
+            naked_nodes.append(nn)
+    #print("naked nodes:", naked_nodes)
+    number_of_colors = len(cable_tuples) + len(naked_nodes)
+    #delta = int(number_of_colors ** (1 / 3))
+    colors = get_colors(number_of_colors)
+    # headline
+    Sim.legend[" # from  to "] = vp.vector(0,0,0) # black headline
+
     nn = min(node_numbers)
-    colors = [0,0,0]
+    #colors = [0, 0, 0]
     legend = {}
+    i = 0
     while nn <= max(node_numbers):
-        colors = increase_color(colors, delta)
-        key = f"{nn:>2} {Data.node_names[nn]}"
-        if nn not in Data.cables_dict:
-            key += "      "
-            #legend[key] = vp.vector(colors[0], colors[1], colors[2])
-            Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
+        #colors = increase_color(colors, delta)
+        if nn in naked_nodes:
+            key = f"{nn:>2} {Data.node_names[nn]}     "
+            #colors = increase_color(colors, delta)
+            color = colors[i]
+            i += 1
+            Sim.legend_nodes[nn] = color
+            Sim.legend[key] = color
+
         else:
-            for i, v in enumerate(Data.cables_dict[nn]):
-                Sim.legend_cables[(i,v)] = vp.vector(colors[0], colors[1], colors[2])
-                if i == 0:
-                    Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
-                    key += f" {nn:>2}-{Data.cables_dict[nn][i]:>2}"
-                else:
-                    colors = increase_color(colors, delta)
-                    key = f"        {nn:>2}-{Data.cables_dict[nn][i]:>2}"
-        #legend[key] = vp.vector(colors[0], colors[1], colors[2])
-        Sim.legend[key] = vp.vector(colors[0], colors[1], colors[2])
+            for k,v in cable_tuples:
+                if k == nn:
+                    #colors = increase_color(colors, delta)
+                    color = colors[i]
+                    i += 1
+                    if k not in Sim.legend_nodes:
+                        key = f"{nn:>2} {Data.node_names[nn]} {Data.node_names[v]}"
+                        Sim.legend_nodes[nn] = color # vp.vector(colors[0], colors[1], colors[2])
+                    else:
+                        key = f"   {Data.node_names[nn]} {Data.node_names[v]}"
+                    Sim.legend_cables[(k, v)] = color # vp.vector(colors[0], colors[1], colors[2])
+                    Sim.legend[key] = color # vp.vector(colors[0], colors[1], colors[2])
         nn += 1
+    # print
+    for k,v in Sim.legend.items():
+        print(k,v)
+        # if nn not in Data.cables_dict:
+        #     key += "      "
+        #     # legend[key] = vp.vector(colors[0], colors[1], colors[2])
+        #     Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
+        # else:
+        #     for i, v in enumerate(Data.cables_dict[nn]):
+        #         Sim.legend_cables[(i, v)] = vp.vector(colors[0], colors[1], colors[2])
+        #         if i == 0:
+        #             Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
+        #             key += f" {nn:>2}-{Data.cables_dict[nn][i]:>2}"
+        #         else:
+        #             colors = increase_color(colors, delta)
+        #             key = f"        {nn:>2}-{Data.cables_dict[nn][i]:>2}"
+        # # legend[key] = vp.vector(colors[0], colors[1], colors[2])
+        # Sim.legend[key] = vp.vector(colors[0], colors[1], colors[2])
+        # nn += 1
+
+
+
+
+    # *********************************** old code
+
+    # for n in Data.node_numbers:
+    #     if n not in Data.cables_dict.keys():
+    #         # maybe in values ?
+    #         #found = False
+    #         #for vlist in Data.cables_dict.values():
+    #         #    for v in vlist:
+    #         #        found = True
+    #         #        break
+    #         #if not found:
+    #         nodes_without_cable.append(n)
+    # #nodes_without_cable = [i for i in node_numbers if i not in cables_dict]
+    # print("number of nodes:", number_of_nodes)
+    # print("nodes without cable source:", nodes_without_cable)
+    # number_of_cables = 0
+    # for k, v in Data.cables_dict.items():
+    #     number_of_cables += len(v)
+    # #print("number of cables:", number_of_cables)
+    # number_of_colors = number_of_cables + len(nodes_without_cable)
+    # delta = int(number_of_colors**(1/3))
+    # #print("number of colors:", number_of_colors)
+    # nn = min(node_numbers)
+    # colors = [0,0,0]
+    # legend = {}
+    # while nn <= max(node_numbers):
+    #     colors = increase_color(colors, delta)
+    #     key = f"{nn:>2} {Data.node_names[nn]}"
+    #     if nn not in Data.cables_dict:
+    #         key += "      "
+    #         #legend[key] = vp.vector(colors[0], colors[1], colors[2])
+    #         Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
+    #     else:
+    #         for i, v in enumerate(Data.cables_dict[nn]):
+    #             Sim.legend_cables[(i,v)] = vp.vector(colors[0], colors[1], colors[2])
+    #             if i == 0:
+    #                 Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
+    #                 key += f" {nn:>2}-{Data.cables_dict[nn][i]:>2}"
+    #             else:
+    #                 colors = increase_color(colors, delta)
+    #                 key = f"        {nn:>2}-{Data.cables_dict[nn][i]:>2}"
+    #     #legend[key] = vp.vector(colors[0], colors[1], colors[2])
+    #     Sim.legend[key] = vp.vector(colors[0], colors[1], colors[2])
+    #     nn += 1
     #print(legend)
     #return legend
 
