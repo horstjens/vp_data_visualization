@@ -7,7 +7,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.3"
+VERSION = "0.30.4"
 
 """
 uae geo 2:
@@ -347,7 +347,8 @@ class Sim:
     # box bounded by 22°32’26.45”N, 51°28’48.53”E & 26°22’22.03”N, 56°34’23.91”E
     # minmax, lat: 22, 27
     # minmax lon: 51, 57
-    mapname = os.path.join("assets", "map_uae4.jpg")
+    mapname1 = os.path.join("assets", "map_uae4.jpg")
+    mapname2 = os.path.join("assets", "map_uae5.jpg")
     #bounding_box = (-74, 41, -69, 45)
     #bounding_box = (51,22.5,57,26.5)
     # uae geo 2:
@@ -1615,6 +1616,27 @@ def widget_func_loads_factor_h(b):
 def widget_func_nodes_factor_r(b):
     Sim.factor["nodes_r"] = b.number
     update_stuff()
+
+
+def widget_func_map(b):
+    # index:0 : google (mapname1), index1: empty (mapname2)
+    if b.index == 0:
+        Sim.mapbox.texture={'file': Sim.mapname1,
+                 # 'bumpmap':bumpmaps.stucco,
+                 # 'place':'left',
+                 # 'flipx':True,
+                 # 'flipy':True,
+                 'turn': 0,
+                 }
+    elif b.index == 1:
+        Sim.mapbox.texture = {'file': Sim.mapname2,
+                              # 'bumpmap':bumpmaps.stucco,
+                              # 'place':'left',
+                              # 'flipx':True,
+                              # 'flipy':True,
+                              'turn': 0,
+                              }
+
 
 
 def widget_func_nodes_base_h(b):
@@ -2923,6 +2945,9 @@ def create_widgets():
     #Sim.gui["preset_A"] = vp.button(pos=Sim.scene3.caption_anchor, text=" Yokoyama A ", bind=widget_func_load_preset_A, disabled=True)
     #Sim.gui["preset_B"] = vp.button(pos=Sim.scene3.caption_anchor, text=" Yokoyama B ", bind=widget_func_load_preset_B, disabled=True)
     #Sim.gui["preset_C"] = vp.button(pos=Sim.scene3.caption_anchor, text=" Yokoyama C ", bind=widget_func_load_preset_C, disabled=True)
+    Sim.scene3.append_to_caption("map texture: ")
+    Sim.gui["map"] = vp.menu(pos=Sim.scene3.caption_anchor, bind=widget_func_map, choices=["google", "empty"], index=0)
+
     Sim.scene3.append_to_caption("\n")
     #Sim.scene3.append_to_caption("save presets: ")
 
@@ -4281,12 +4306,12 @@ def create_stuff():
     Sim.axis_z = vp.arrow(pos=Sim.center, axis=vp.vector(0, 0, 0.1), color=vp.color.blue, pickable=False)
     # ---- create ground floor ----
     # Sim.scene.visible=False
-    vp.box(  # pos=vp.vector(Sim.grid_max / 2, -0.05, Sim.grid_max / 2),
+    Sim.mapbox = vp.box(  # pos=vp.vector(Sim.grid_max / 2, -0.05, Sim.grid_max / 2),
         pos=Sim.center + vp.vector(0, -0.01, 0),
         size=vp.vector(Sim.grid_max_x, 0.015, Sim.grid_max_z),
         # color=vp.color.cyan,
         # opacity=0.5,
-        texture={'file': Sim.mapname,
+        texture={'file': Sim.mapname1,
                  # 'bumpmap':bumpmaps.stucco,
                  # 'place':'left',
                  # 'flipx':True,
