@@ -7,7 +7,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.6"
+VERSION = "0.30.61"
 
 """
 uae geo 2:
@@ -339,6 +339,7 @@ class Sim:
     legend_cables = {} # (from,to) : color_vector
     dia_tick_color = vp.color.black
     #legend = create_color_legend()  # dictionary
+    decimals_node = 1
 
 
     # minmax, lat: [41.06477, 44.00462]   -> 41,45
@@ -1347,9 +1348,14 @@ def widget_func_toggle_dynamic_cables(b):
 
 def widget_func_toggle_nodes_labels(b):
     """toggles labels for nodes"""
+    #choices = ["none", "Volt"],
     for name, value in Sim.labels.items():
         if name.startswith("node"):
-            Sim.labels[name].visible = b.checked
+            if b.index == 0: # none
+                Sim.labels[name].visible = False
+            elif b.index == 1: # Volt
+                Sim.labels[name].visible = True
+                #Sim.labels[name].visible = b.checked
 
 
 def widget_func_toggle_loads_labels(b):
@@ -1705,6 +1711,9 @@ def widget_func_nodes_factor_r(b):
     Sim.factor["nodes_r"] = b.number
     update_stuff()
 
+def widget_func_nodes_decimal(b):
+    Sim.decimals_node = b.number
+    update_stuff()
 
 def widget_func_map(b):
     # index:0 : google (mapname1), index1: empty (mapname2)
@@ -3054,7 +3063,7 @@ def create_widgets():
     #Sim.scene3.append_to_caption("\n")
     # ------------
     Sim.scene3.append_to_caption(
-        "|  entity   |  visible  |  letter | label|  radius factor  | radius base   | height factor | height base  | dynamic color | set camera to position: ")
+        "|  entity   |  visible  |       letter       |       label       | decimals |  radius factor  | radius base   | height factor | height base  | dynamic color | set camera to position: ")
     Sim.gui["camerapos1"] = vp.button(pos=Sim.scene3.caption_anchor, text=" original ", bind=widget_func_camera1)
     Sim.gui["camerapos2"] = vp.button(pos=Sim.scene3.caption_anchor, text=" A ", bind=widget_func_camera2, disabled=True)
     Sim.gui["camerapos3"] = vp.button(pos=Sim.scene3.caption_anchor, text=" B ", bind=widget_func_camera3, disabled=True)
@@ -3069,9 +3078,19 @@ def create_widgets():
                                           choices=["none","names","numbers","both"],
                                           index=1,
                                           pos=Sim.scene3.caption_anchor)
-    Sim.gui["box_node_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
-                                             bind=widget_func_toggle_nodes_labels)
-    # Sim.scene3.append_to_caption("<code> | </code>")
+    #Sim.gui["box_node_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
+    #                                         bind=widget_func_toggle_nodes_labels)
+    Sim.gui["menu_node_labels"] = vp.menu(bind=widget_func_toggle_nodes_labels,
+                                          choices = ["none", "Volt"],
+                                          index=0,
+                                          pos=Sim.scene3.caption_anchor)
+    Sim.scene3.append_to_caption("<code> | </code>")
+    Sim.gui["winput_decimals_node"] = vp.winput(pos=Sim.scene3.caption_anchor,
+                                                bind=widget_func_nodes_decimal,
+                                                width=25,
+                                                type="numeric",
+                                                text="1")
+    Sim.scene3.append_to_caption("<code> | </code>")
     Sim.gui["nodes_factor_r"] = vp.winput(pos=Sim.scene3.caption_anchor, bind=widget_func_nodes_factor_r, width=50,
                                           # prompt="nodes:",       # prompt does not work with python yet
                                           type="numeric", text=f"{Sim.factor['nodes_r']}")
@@ -4509,7 +4528,7 @@ def create_stuff():
                                                  # billboard=True, emissive=True,
                                                  pickable=False, align="center")
         Sim.labels[f"node {node_number}"] = vp.label(pos=npos,
-                                                text="n", height=10,
+                                                text="?", height=10,
                                                 color=vp.color.white,
                                                 yoffset=-30,
                                                 line=False,
@@ -5039,7 +5058,10 @@ def update_stuff():
             cyl.color = update_color(volt, "nodes")
         else:
             cyl.color = Sim.colors["nodes"]
-        Sim.labels[f"node {number}"].text = f"{volt} V"
+        ## Sim.labels[f"node {number}"].text = f"{volt:.1f} V"
+        ff = "{" + f":.{Sim.decimals_node}f"+"} V"
+        print(ff, ff.format(volt))
+        Sim.labels[f"node {number}"].text = ff.format(volt)
         Sim.letters[f"node {number}"].pos.y = cyl.axis.y
         # Sim.letters[f"node {number}"].pos.y = cyl.axis.y
         so = Sim.selected_object
