@@ -7,7 +7,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.5"
+VERSION = "0.30.6"
 
 """
 uae geo 2:
@@ -1361,27 +1361,96 @@ def widget_func_toggle_loads_labels(b):
 def widget_func_toggle_nodes_letters(b):
     """toggle letters for nodes"""
     # Sim.letters[f"node {number}"]
+    # 0: none, 1:name, 2:number, 3:both
+    # Data.node_names = {}  # node_number: node_name
+    # Data.node_names2 = {}  # node_name: node_number
     for key, label in Sim.letters.items():
         if key.startswith("node "):
-            label.visible = b.checked
+            number = int(key.split(" ")[-1])
+            name = Data.node_names[number]
+            if b.index == 0:
+                label.visible = False
+            elif b.index == 1:  # name
+                label.text = name
+                label.visible = True
+            elif b.index == 2: # number
+                label.text = str(number)
+                label.visible = True
+            elif b.index == 3: # both
+                label.text = f"{number}\n{name}"
+                label.visible = True
+    #        label.visible = b.checked
+
 
 
 def widget_func_toggle_cable_letters(b):
+    #for key, label in Sim.letters.items():
+    #    if key.startswith("cable "):
+    #        label.visible = b.checked
+    # "cable {i}-{j}"
     for key, label in Sim.letters.items():
         if key.startswith("cable "):
-            label.visible = b.checked
+            number1 = int(key.split(" ")[-1].split("-")[0])
+            number2 = int(key.split(" ")[-1].split("-")[1])
+            name1 = Data.node_names[number1]
+            name2 = Data.node_names[number2]
+            if b.index == 0:
+                label.visible = False
+            elif b.index == 1:  # name
+                label.text = f"{name1}-{name2}"
+                label.visible = True
+            elif b.index == 2:  # number
+                label.text = f"{number1}-{number2}"
+                label.visible = True
+            elif b.index == 3:  # both
+                label.text = f"{number1}-{number2}\n{name1}-{name2}"
+                label.visible = True
 
 
 def widget_func_toggle_generator_letters(b):
+    #for key, label in Sim.letters.items():
+    #    if key.startswith("generator "):
+    #        label.visible = b.checked
+    # Data.node_names = {}  # node_number: node_name
+    # Data.node_names2 = {}  # node_name: node_number
     for key, label in Sim.letters.items():
         if key.startswith("generator "):
-            label.visible = b.checked
+            number = int(key.split(" ")[-1])
+            name = Data.node_names[number]
+            if b.index == 0:
+                label.visible = False
+            elif b.index == 1:  # name
+                label.text = name
+                label.visible = True
+            elif b.index == 2: # number
+                label.text = str(number)
+                label.visible = True
+            elif b.index == 3: # both
+                label.text = f"{number}\n{name}"
+                label.visible = True
 
 
 def widget_func_toggle_loads_letters(b):
+    #for key, label in Sim.letters.items():
+    #    if key.startswith("load "):
+    #        label.visible = b.checked
+    # Data.node_names = {}  # node_number: node_name
+    # Data.node_names2 = {}  # node_name: node_number
     for key, label in Sim.letters.items():
         if key.startswith("load "):
-            label.visible = b.checked
+            number = int(key.split(" ")[-1])
+            name = Data.node_names[number]
+            if b.index == 0:
+                label.visible = False
+            elif b.index == 1:  # name
+                label.text = name
+                label.visible = True
+            elif b.index == 2: # number
+                label.text = str(number)
+                label.visible = True
+            elif b.index == 3: # both
+                label.text = f"{number}\n{name}"
+                label.visible = True
 
 
 def widget_func_toggle_generator_labels(b):
@@ -1417,9 +1486,28 @@ def widget_func_toggle_storages(b):
         Sim.storage_lines[i].visible = b.checked
 
 def widget_func_toggle_storages_letters(b):
+    #for key, label in Sim.letters.items():
+    #    if key.startswith("storage "):
+    #        label.visible = b.checked
+    # Sim.letters[f"node {number}"]
+    # 0: none, 1:name, 2:number, 3:both
+    # Data.node_names = {}  # node_number: node_name
+    # Data.node_names2 = {}  # node_name: node_number
     for key, label in Sim.letters.items():
         if key.startswith("storage "):
-            label.visible = b.checked
+            number = int(key.split(" ")[-1])
+            name = Data.node_names[number]
+            if b.index == 0:
+                label.visible = False
+            elif b.index == 1:  # name
+                label.text = name
+                label.visible = True
+            elif b.index == 2:  # number
+                label.text = str(number)
+                label.visible = True
+            elif b.index == 3:  # both
+                label.text = f"{number}\n{name}"
+                label.visible = True
 
 def widget_func_toggle_storages_labels(b):
     """toggles labels for storages"""
@@ -2975,8 +3063,12 @@ def create_widgets():
     Sim.scene3.append_to_caption("<code>Nodes:       | </code>")
     Sim.gui["box_node"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> |  </code>", checked=True,
                                       bind=widget_func_toggle_nodes)
-    Sim.gui["box_node_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
-                                             bind=widget_func_toggle_nodes_letters)
+    #Sim.gui["box_node_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
+    #                                         bind=widget_func_toggle_nodes_letters)
+    Sim.gui["menu_node_letter"] = vp.menu(bind=widget_func_toggle_nodes_letters,
+                                          choices=["none","names","numbers","both"],
+                                          index=1,
+                                          pos=Sim.scene3.caption_anchor)
     Sim.gui["box_node_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
                                              bind=widget_func_toggle_nodes_labels)
     # Sim.scene3.append_to_caption("<code> | </code>")
@@ -3014,8 +3106,12 @@ def create_widgets():
     Sim.gui["box_storages"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> |  </code>", checked=True,
                                         disabled=True,
                                         bind=widget_func_toggle_storages)
-    Sim.gui["box_storages_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
-                                               bind=widget_func_toggle_storages_letters)
+    #Sim.gui["box_storages_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
+    #                                           bind=widget_func_toggle_storages_letters)
+    Sim.gui["menu_storages_letter"] = vp.menu(bind=widget_func_toggle_storages_letters,
+                                          choices=["none","names","numbers","both"],
+                                          index=1,
+                                          pos=Sim.scene3.caption_anchor)
     Sim.gui["box_storages_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
                                                bind=widget_func_toggle_storages_labels)
     Sim.gui["storages_factor_r"] = vp.winput(pos=Sim.scene3.caption_anchor, bind=widget_func_storages_factor_r, width=50,
@@ -3052,8 +3148,12 @@ def create_widgets():
     Sim.gui["box_cables"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> |  </code>", checked=True,
                                         disabled=True,
                                         bind=widget_func_toggle_cables)
-    Sim.gui["box_cables_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
-                                               bind=widget_func_toggle_cable_letters)
+    #Sim.gui["box_cables_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
+    #                                           bind=widget_func_toggle_cable_letters)
+    Sim.gui["menu_cables_letter"] = vp.menu(bind=widget_func_toggle_cable_letters,
+                                          choices=["none","names","numbers","both"],
+                                          index=1,
+                                          pos=Sim.scene3.caption_anchor)
     Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
                                                bind=widget_func_toggle_cable_labels)
     Sim.gui["cables_factor_r"] = vp.winput(pos=Sim.scene3.caption_anchor, bind=widget_func_cables_factor_r, width=50,
@@ -3096,8 +3196,12 @@ def create_widgets():
     Sim.scene3.append_to_caption("<code>Generators:  | </code>")
     Sim.gui["box_generator"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> |  </code>", checked=True,
                                            bind=widget_func_toggle_generators)
-    Sim.gui["box_generator_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
-                                                  bind=widget_func_toggle_generator_letters)
+    #Sim.gui["box_generator_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
+    #                                              bind=widget_func_toggle_generator_letters)
+    Sim.gui["menu_generator_letter"] = vp.menu(bind=widget_func_toggle_generator_letters,
+                                               choices=["none", "names", "numbers", "both"],
+                                               index=1,
+                                               pos=Sim.scene3.caption_anchor)
     Sim.gui["box_generator_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
                                                   bind=widget_func_toggle_generator_labels)
     # Sim.scene3.append_to_caption("<code> | </code>")
@@ -3144,8 +3248,12 @@ def create_widgets():
     Sim.scene3.append_to_caption("<code>Loads:       | </code>")
     Sim.gui["box_loads"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> |  </code>", checked=True,
                                        bind=widget_func_toggle_loads)
-    Sim.gui["box_loads_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
-                                              bind=widget_func_toggle_loads_letters)
+    #Sim.gui["box_loads_letter"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=True,
+    #                                          bind=widget_func_toggle_loads_letters)
+    Sim.gui["menu_loads_letter"] = vp.menu(bind=widget_func_toggle_loads_letters,
+                                           choices=["none", "names", "numbers", "both"],
+                                           index=1,
+                                           pos=Sim.scene3.caption_anchor)
     Sim.gui["box_loads_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
                                               bind=widget_func_toggle_loads_labels)
     # Sim.scene3.append_to_caption("<code> | </code>")
