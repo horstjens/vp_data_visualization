@@ -7,7 +7,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.62"
+VERSION = "0.30.63"
 
 """
 uae geo 2:
@@ -1368,9 +1368,21 @@ def widget_func_toggle_nodes_labels(b):
 
 
 def widget_func_toggle_loads_labels(b):
+    # none, p, loading?
+    if b.index == 1:
+        Sim.label_load = "p"
+    elif b.index == 2:
+        Sim.label_load = "loading" # ??
     for name, value in Sim.labels.items():
         if name.startswith("load"):
-            Sim.labels[name].visible = b.checked
+            if b.index == 0:
+                Sim.labels[name].visible = False
+            else:
+                Sim.labels[name].visible = True
+
+def widget_func_load_decimal(b):
+    Sim.decimals_load = b.number
+    update_stuff()
 
 
 def widget_func_toggle_nodes_letters(b):
@@ -3336,8 +3348,20 @@ def create_widgets():
                                            choices=["none", "names", "numbers", "both"],
                                            index=1,
                                            pos=Sim.scene3.caption_anchor)
-    Sim.gui["box_loads_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
-                                              bind=widget_func_toggle_loads_labels)
+    Sim.scene3.append_to_caption("<code>      | </code>")
+    #Sim.gui["box_loads_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
+    #                                          bind=widget_func_toggle_loads_labels)
+    Sim.gui["menu_loads_labels"] = vp.menu(bind=widget_func_toggle_loads_labels,
+                                           choices=["none", "p", "?loading?"],
+                                           index=1,
+                                           pos=Sim.scene3.caption_anchor)
+    Sim.scene3.append_to_caption("<code>      | </code>")
+    Sim.gui["winput_decimals_load"] = vp.winput(pos=Sim.scene3.caption_anchor,
+                                                 bind=widget_func_load_decimal,
+                                                 width=25,
+                                                 type="numeric",
+                                                 text="1")
+    Sim.scene3.append_to_caption("<code>      | </code>")
     # Sim.scene3.append_to_caption("<code> | </code>")
     Sim.gui["loads_factor_r"] = vp.winput(pos=Sim.scene3.caption_anchor, bind=widget_func_loads_factor_r, width=50,
                                           # prompt="generators:", # prompt does not work with python yet
@@ -5057,7 +5081,8 @@ def update_stuff():
     # if Sim.gui["box_loads"].checked:
     for number, cyl in Sim.loads.items():
         try:
-            p = Data.df[f"load_power_{number}"][Sim.i]
+            power = Data.df[f"load_power_{number}"][Sim.i]
+            #loading = Data.df[f"load_loading_{number}"][Sim.i]
         except KeyError:
             # print(f"could not find data: column load_power_{number}, line {Sim.i})")
             continue
@@ -5067,21 +5092,30 @@ def update_stuff():
         if number in Sim.tubes_load:
             tube = Sim.tubes_load[number]
             if not Sim.sloped_cables:
-                tube.pos.y = Sim.base["cables_h"] + p * Sim.factor["cables_h"]
+                tube.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
             else:
                 tube.pos.y = Sim.nodes[number].axis.y
 
-        cyl.power = p
-        cyl.radius = Sim.base["loads_r"] + p * Sim.factor["loads_r"]
-        cyl.axis = vp.vector(0, Sim.base["loads_h"] + p * Sim.factor["loads_h"], 0)
+        cyl.power = power
+        cyl.radius = Sim.base["loads_r"] + power * Sim.factor["loads_r"]
+        cyl.axis = vp.vector(0, Sim.base["loads_h"] + power * Sim.factor["loads_h"], 0)
         Sim.letters[f"load {number}"].pos.y = cyl.axis.y
+        if Sim.label_load == "p":
+            ff = "p: {" + f":.{Sim.decimals_load}f" + "}"
+            Sim.labels[f"load {number}"].text = ff.format(power)
+        # loading for loads? where to get value?
+        #elif Sim.label_storage == "loading":
+        #    ff = "% loading: {" + f":.{Sim.decimals_load}f" + "}"
+        #    Sim.labels[f"load {number}"].text = ff.format(loading)
+        #text=
+        #Sim.labels[f"load {number}"].text = text
         if Sim.dynamic_colors["loads"]:
             cyl.color = update_color(p, "loads")
         else:
             cyl.color = Sim.colors["loads"]
         so = Sim.selected_object
         if so is not None and so.what == "load" and so.number == number:
-            Sim.gui["help3"].text = f"load: {p:.2f}"  # TODO: unit
+            Sim.gui["help3"].text = f"load: {power:.2f}"  # TODO: unit
 
     # --------- generators ----------------
     for number, cyl in Sim.generators.items():
