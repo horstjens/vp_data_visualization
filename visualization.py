@@ -7,7 +7,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.61"
+VERSION = "0.30.62"
 
 """
 uae geo 2:
@@ -339,7 +339,16 @@ class Sim:
     legend_cables = {} # (from,to) : color_vector
     dia_tick_color = vp.color.black
     #legend = create_color_legend()  # dictionary
+
     decimals_node = 1
+    decimals_storage = 1
+    decimals_load = 1
+    decimals_generator = 1
+    decimals_cable = 1
+    label_storage = "p" # or "loading" TODO state ??
+    label_load = "p" # or "loading"
+    label_generator = "p" # or "angle" or "p+angle" or "loading"
+    label_cable = "p" # "loading" or "p+loading"
 
 
     # minmax, lat: [41.06477, 44.00462]   -> 41,45
@@ -518,8 +527,8 @@ class Sim:
               "losses": 1.0,
               "pointer1": 1.5,  # pointer1 to display angle of generator. multiplying base["generator_r"]
               "pointer2": 2.0,  # pointer2 to display angle of generator. multiplying base["generator_r"]
-              "storages_h": 1.0,
-              "storages_r": 1.0,
+              "storages_h": 0.001,
+              "storages_r": 0.0,
               }
     base = {"generators_h": 0.0,
             "generators_r": 0.01,
@@ -531,10 +540,10 @@ class Sim:
             "cables_r": 0.005,
             "middles_h": 0.0,
             "middles_r": 0.005,
-            "storages_h": 0.0,
+            "storages_h": 0.01,
             "storages_r": 0.01,
-            "flying_arrows_length": 0.05,  # lenght of a flying arrow in world coordinate units
-            "flying_arrows_distance": 2,  # distance in arrow_lengths between 2 arrows
+            "flying_arrows_length": 0.01,  # length of a flying arrow in world coordinate units
+            "flying_arrows_distance": 4,  # distance in arrow_lengths between 2 arrows
             }
 
     visible = {"generators": True,
@@ -1468,10 +1477,27 @@ def widget_func_toggle_generator_labels(b):
 
 def widget_func_toggle_cable_labels(b):
     """toggles labels for cables"""
+    # none, p, loading, p+loading
+    if b.index == 1:
+        Sim.label_cable = "p"
+        update_stuff()
+    elif b.index == 2:
+        Sim.label_cable = "loading"
+        update_stuff()
+    elif b.index == 3:
+        Sim.label_cable = "p+loading"
+        update_stuff()
     for name, value in Sim.labels.items():
         if name.startswith("cable"):
-            Sim.labels[name].visible = b.checked
+            if b.index == 0:
+                Sim.labels[name].visible = False
+            else:
+                Sim.labels[name].visible = True
 
+
+def widget_func_cable_decimal(b):
+    Sim.decimals_cable = b.number
+    update_stuff()
 
 def widget_func_toggle_cables(b):
     """toggles visibility for sub-cables on floor (shadows) """
@@ -1517,11 +1543,23 @@ def widget_func_toggle_storages_letters(b):
 
 def widget_func_toggle_storages_labels(b):
     """toggles labels for storages"""
+    #["none", "P", "% loading"],
+    if b.index == 1:
+        Sim.label_storage = "p"
+    elif b.index == 2:
+        Sim.label_storage = "loading"
     for name, value in Sim.labels.items():
         if name.startswith("storage"):
-            Sim.labels[name].visible = b.checked
+            if b.index == 0:
+                Sim.labels[name].visible = False
+            elif b.index in (1,2):
+                Sim.labels[name].visible = True
+    if b.index in (1,2):
+        update_stuff()
 
-
+def widget_func_storage_decimal(b):
+    Sim.decimals_storage = b.number
+    update_stuff()
 
 def widget_func_toggle_cursor_brackets(b):
     Sim.gui["bracket_left"].visible = b.checked
@@ -3063,7 +3101,7 @@ def create_widgets():
     #Sim.scene3.append_to_caption("\n")
     # ------------
     Sim.scene3.append_to_caption(
-        "|  entity   |  visible  |       letter       |       label       | decimals |  radius factor  | radius base   | height factor | height base  | dynamic color | set camera to position: ")
+        "|  entity   |  visible  |       letter               |       label       | decimals |  radius factor  | radius base   | height factor | height base  | dynamic color | set camera to position: ")
     Sim.gui["camerapos1"] = vp.button(pos=Sim.scene3.caption_anchor, text=" original ", bind=widget_func_camera1)
     Sim.gui["camerapos2"] = vp.button(pos=Sim.scene3.caption_anchor, text=" A ", bind=widget_func_camera2, disabled=True)
     Sim.gui["camerapos3"] = vp.button(pos=Sim.scene3.caption_anchor, text=" B ", bind=widget_func_camera3, disabled=True)
@@ -3080,6 +3118,7 @@ def create_widgets():
                                           pos=Sim.scene3.caption_anchor)
     #Sim.gui["box_node_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
     #                                         bind=widget_func_toggle_nodes_labels)
+    Sim.scene3.append_to_caption("<code> | </code>")
     Sim.gui["menu_node_labels"] = vp.menu(bind=widget_func_toggle_nodes_labels,
                                           choices = ["none", "Volt"],
                                           index=0,
@@ -3131,8 +3170,20 @@ def create_widgets():
                                           choices=["none","names","numbers","both"],
                                           index=1,
                                           pos=Sim.scene3.caption_anchor)
-    Sim.gui["box_storages_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
-                                               bind=widget_func_toggle_storages_labels)
+    #Sim.gui["box_storages_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
+    #                                           bind=widget_func_toggle_storages_labels)
+    Sim.scene3.append_to_caption("<code> | </code>")
+    Sim.gui["menu_storage_labels"] = vp.menu(bind=widget_func_toggle_storages_labels,
+                                          choices=["none", "P", "% loading"],
+                                          index=0,
+                                          pos=Sim.scene3.caption_anchor)
+    Sim.scene3.append_to_caption("<code> | </code>")
+    Sim.gui["winput_decimals_storage"] = vp.winput(pos=Sim.scene3.caption_anchor,
+                                                bind=widget_func_storage_decimal,
+                                                width=25,
+                                                type="numeric",
+                                                text="1")
+    Sim.scene3.append_to_caption("<code> | </code>")
     Sim.gui["storages_factor_r"] = vp.winput(pos=Sim.scene3.caption_anchor, bind=widget_func_storages_factor_r, width=50,
                                            # prompt="nodes:",       # prompt does not work with python yet
                                            type="numeric", text=f"{Sim.factor['storages_r']}")
@@ -3173,8 +3224,20 @@ def create_widgets():
                                           choices=["none","names","numbers","both"],
                                           index=1,
                                           pos=Sim.scene3.caption_anchor)
-    Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
-                                               bind=widget_func_toggle_cable_labels)
+    Sim.scene3.append_to_caption("<code> | </code>")
+    #Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
+    #                                           bind=widget_func_toggle_cable_labels)
+    Sim.gui["menu_cables_labels"] = vp.menu(pos=Sim.scene3.caption_anchor,
+                                            choices=["none", "p", "loading", "p + loading"],
+                                            bind=widget_func_toggle_cable_labels,
+                                            index=0,)
+    Sim.scene3.append_to_caption("<code> | </code>")
+    Sim.gui["winput_decimals_cable"] = vp.winput(pos=Sim.scene3.caption_anchor,
+                                                bind=widget_func_cable_decimal,
+                                                width=25,
+                                                type="numeric",
+                                                text="1")
+    Sim.scene3.append_to_caption("<code> | </code>")
     Sim.gui["cables_factor_r"] = vp.winput(pos=Sim.scene3.caption_anchor, bind=widget_func_cables_factor_r, width=50,
                                            # prompt="nodes:",       # prompt does not work with python yet
                                            type="numeric", text=f"{Sim.factor['cables_r']}")
@@ -4548,7 +4611,7 @@ def create_stuff():
             Sim.storages[node_number].number = node_number  # storage number
             # gnumber = Data.nodes_to_generators[number]
             # Sim.generators[is_generator].node_number = number  # corresponding node number
-            Sim.letters[f"storage {node_number}"] = vp.label(text=f"{name.lower()})", color=vp.color.white,
+            Sim.letters[f"storage {node_number}"] = vp.label(text=f"{name.lower()}", color=vp.color.white,
                                                                pos=spos + vp.vector(0, Sim.base["storages_r"], 0),
                                                                opacity=0.0, box=False,
                                                                # billboard=True, emissive=True,
@@ -4952,6 +5015,44 @@ def update_stuff():
 
 
     Sim.scene.select()
+
+    # ------- storages -----
+    for number, cyl in Sim.storages.items():
+        #storage_loading_3,storage_power_3,storage_state_3
+        try:
+            loading = Data.df[f"storage_loading_{number}"][Sim.i]
+            power = Data.df[f"storage_power_{number}"][Sim.i]
+            state = Data.df[f"storage_state_{number}"][Sim.i]
+            print(number, ":", loading, power, state)
+        except KeyError:
+            continue
+        if number in Sim.tubes_storage:
+            tube = Sim.tubes_storage[number]
+            if not Sim.sloped_cables:
+                tube.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
+            else:
+                tube.pos.y = Sim.nodes[number].axis.y
+
+        cyl.power = power
+        cyl.radius = Sim.base["storages_r"] + power * Sim.factor["storages_r"]
+        cyl.axis = vp.vector(0, Sim.base["storages_h"] + power * Sim.factor["storages_h"], 0)
+        Sim.letters[f"storage {number}"].pos.y = cyl.axis.y
+
+        if Sim.label_storage == "p":
+            ff = "p: {" + f":.{Sim.decimals_storage}f" + "}"
+            Sim.labels[f"storage {number}"].text = ff.format(power)
+        elif Sim.label_storage == "loading":
+            ff = "% loading: {" + f":.{Sim.decimals_storage}f" + "}"
+            Sim.labels[f"storage {number}"].text = ff.format(loading)
+
+        if Sim.dynamic_colors["storages"]:
+            cyl.color = update_color(power, "storages")
+        else:
+            cyl.color = Sim.colors["storages"]
+        so = Sim.selected_object
+        if so is not None and so.what == "storage" and so.number == number:
+            Sim.gui["help3"].text = f"storage: p: {power:.2f} loading: {loading:.2f} state: {state:.2f}"  # TODO: unit
+
     # -------- loads --------
     # if Sim.gui["box_loads"].checked:
     for number, cyl in Sim.loads.items():
@@ -4963,11 +5064,12 @@ def update_stuff():
             # print("i skip this")
             # print(p, Sim.base["loads_r"], Sim.factor["loads_r"])
         # print(Sim.tubes_load)
-        tube = Sim.tubes_load[number]
-        if not Sim.sloped_cables:
-            tube.pos.y = Sim.base["cables_h"] + p * Sim.factor["cables_h"]
-        else:
-            tube.pos.y = Sim.nodes[number].axis.y
+        if number in Sim.tubes_load:
+            tube = Sim.tubes_load[number]
+            if not Sim.sloped_cables:
+                tube.pos.y = Sim.base["cables_h"] + p * Sim.factor["cables_h"]
+            else:
+                tube.pos.y = Sim.nodes[number].axis.y
 
         cyl.power = p
         cyl.radius = Sim.base["loads_r"] + p * Sim.factor["loads_r"]
@@ -5060,7 +5162,7 @@ def update_stuff():
             cyl.color = Sim.colors["nodes"]
         ## Sim.labels[f"node {number}"].text = f"{volt:.1f} V"
         ff = "{" + f":.{Sim.decimals_node}f"+"} V"
-        print(ff, ff.format(volt))
+        #print(ff, ff.format(volt))
         Sim.labels[f"node {number}"].text = ff.format(volt)
         Sim.letters[f"node {number}"].pos.y = cyl.axis.y
         # Sim.letters[f"node {number}"].pos.y = cyl.axis.y
@@ -5126,9 +5228,19 @@ def update_stuff():
 
             if f"cable {number}-{target}" in Sim.labels:
                 # print(f"updating cable {number} {target}..")
-                Sim.labels[
-                    f"cable {number}-{target}"].text = f"power: {power:.2f} loss: {loss:.2f} loading: {loading:.2f} flow:{flow}"
+                if Sim.label_cable == "p":
+                    ff = "p: {" + f":.{Sim.decimals_cable}f" + "}"
+                    text = ff.format(power)
+                elif Sim.label_cable == "loading":
+                    ff = "loading: {" + f":.{Sim.decimals_cable}f" + "}"
+                    text = ff.format(loading)
+                elif Sim.label_cable == "p+loading":
+                    ff = "p: {" + f":.{Sim.decimals_cable}f" + "}" + " loading: {" + f":.{Sim.decimals_cable}f" + "}"
+                    text = ff.format(power, loading)
 
+                #Sim.labels[
+                #    f"cable {number}-{target}"].text = f"power: {power:.2f} loss: {loss:.2f} loading: {loading:.2f} flow:{flow}"
+                Sim.labels[f"cable {number}-{target}"].text = text
                 so = Sim.selected_object
                 if so is not None and so.what == "middle" and so.number == (number, target):
                     # Sim.labels[f"cable {number}-{target}"].text
