@@ -7,7 +7,7 @@ import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
 #import pyproj
 
-VERSION = "0.30.63"
+VERSION = "0.30.64"
 
 """
 uae geo 2:
@@ -498,7 +498,7 @@ class Sim:
               "generators": vp.color.yellow,
               "loads": vp.color.red,
               "storages": vp.color.cyan,
-              "cables": vp.color.gray(0.5),
+              "cables": vp.color.orange, # vp.color.gray(0.5),
               # "mini_arrow": vp.color.purple,
               # "flyers1": vp.color.magenta,
               # "flyers2": vp.color.purple,
@@ -1368,11 +1368,10 @@ def widget_func_toggle_nodes_labels(b):
 
 
 def widget_func_toggle_loads_labels(b):
-    # none, p, loading?
     if b.index == 1:
         Sim.label_load = "p"
-    elif b.index == 2:
-        Sim.label_load = "loading" # ??
+    #elif b.index == 2:
+    #    Sim.label_load = "loading" # ??
     for name, value in Sim.labels.items():
         if name.startswith("load"):
             if b.index == 0:
@@ -1482,9 +1481,23 @@ def widget_func_toggle_loads_letters(b):
 
 def widget_func_toggle_generator_labels(b):
     """toggles labels for generators"""
+    #["none", "p", "angle", "p+angle", "loading"],
+    if b.index == 1:
+        Sim.label_generator = "p"
+    elif b.index == 2:
+        Sim.label_generator = "angle"
+    elif b.index == 3:
+        Sim.label_generator = "p+angle"
+    elif b.index == 4:
+        Sim.label_generator = "loading"
     for name, value in Sim.labels.items():
         if name.startswith("generator"):
-            Sim.labels[name].visible = b.checked
+            if b.index > 0:
+                Sim.labels[name].visible = True
+            else:
+                Sim.labels[name].visible = False
+    if b.index > 0:
+        update_stuff()
 
 
 def widget_func_toggle_cable_labels(b):
@@ -1506,6 +1519,10 @@ def widget_func_toggle_cable_labels(b):
             else:
                 Sim.labels[name].visible = True
 
+
+def widget_func_generator_decimal(b):
+    Sim.decimals_generator = b.number
+    update_stuff()
 
 def widget_func_cable_decimal(b):
     Sim.decimals_cable = b.number
@@ -1706,6 +1723,8 @@ def widget_func_generators_factor_r(b):
 def widget_func_loads_factor_r(b):
     Sim.factor["loads_r"] = b.number
     update_stuff()
+
+
 
 
 def widget_func_generators_base_h(b):
@@ -2379,7 +2398,7 @@ def widget_func_start_simulation(b):
             total_length += vp.mag(pos2-pos)
             # start flying arrows TODO: hier weitermachen
             while my_length < total_length:
-                FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.gray(0.75), round=True)
+                FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.orange, round=True)
                 my_length += Sim.base["flying_arrows_length"] * Sim.base["flying_arrows_distance"]
                 overshoot = my_length - total_length
                 if overshoot < 0:
@@ -3186,7 +3205,7 @@ def create_widgets():
     #                                           bind=widget_func_toggle_storages_labels)
     Sim.scene3.append_to_caption("<code> | </code>")
     Sim.gui["menu_storage_labels"] = vp.menu(bind=widget_func_toggle_storages_labels,
-                                          choices=["none", "P", "% loading"],
+                                          choices=["none", "p", "loading"],
                                           index=0,
                                           pos=Sim.scene3.caption_anchor)
     Sim.scene3.append_to_caption("<code> | </code>")
@@ -3296,9 +3315,20 @@ def create_widgets():
                                                choices=["none", "names", "numbers", "both"],
                                                index=1,
                                                pos=Sim.scene3.caption_anchor)
-    Sim.gui["box_generator_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
-                                                  bind=widget_func_toggle_generator_labels)
-    # Sim.scene3.append_to_caption("<code> | </code>")
+    Sim.scene3.append_to_caption("<code> | </code>")
+    #Sim.gui["box_generator_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
+    #                                              bind=widget_func_toggle_generator_labels)
+    Sim.gui["menu_generator_labels"] = vp.menu(bind=widget_func_toggle_generator_labels,
+                                                choices=["none", "p", "angle", "p+angle", "loading"],
+                                                index=0,
+                                                pos=Sim.scene3.caption_anchor)
+    Sim.scene3.append_to_caption("<code> | </code>")
+    Sim.gui["winput_decimals_generator"] = vp.winput(pos=Sim.scene3.caption_anchor,
+                                                bind=widget_func_generator_decimal,
+                                                width=25,
+                                                type="numeric",
+                                                text="1")
+    Sim.scene3.append_to_caption("<code> | </code>")
     Sim.gui["generators_factor_r"] = vp.winput(pos=Sim.scene3.caption_anchor, bind=widget_func_generators_factor_r,
                                                width=50,
                                                # prompt="generators:", # prompt does not work with python yet
@@ -3348,14 +3378,14 @@ def create_widgets():
                                            choices=["none", "names", "numbers", "both"],
                                            index=1,
                                            pos=Sim.scene3.caption_anchor)
-    Sim.scene3.append_to_caption("<code>      | </code>")
+    Sim.scene3.append_to_caption("<code> | </code>")
     #Sim.gui["box_loads_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
     #                                          bind=widget_func_toggle_loads_labels)
     Sim.gui["menu_loads_labels"] = vp.menu(bind=widget_func_toggle_loads_labels,
-                                           choices=["none", "p", "?loading?"],
-                                           index=1,
+                                           choices=["none", "p"],
+                                           index=0,
                                            pos=Sim.scene3.caption_anchor)
-    Sim.scene3.append_to_caption("<code>      | </code>")
+    Sim.scene3.append_to_caption("<code> | </code>")
     Sim.gui["winput_decimals_load"] = vp.winput(pos=Sim.scene3.caption_anchor,
                                                  bind=widget_func_load_decimal,
                                                  width=25,
@@ -5066,7 +5096,7 @@ def update_stuff():
             ff = "p: {" + f":.{Sim.decimals_storage}f" + "}"
             Sim.labels[f"storage {number}"].text = ff.format(power)
         elif Sim.label_storage == "loading":
-            ff = "% loading: {" + f":.{Sim.decimals_storage}f" + "}"
+            ff = "loading: {" + f":.{Sim.decimals_storage}f" + "}"
             Sim.labels[f"storage {number}"].text = ff.format(loading)
 
         if Sim.dynamic_colors["storages"]:
@@ -5110,7 +5140,7 @@ def update_stuff():
         #text=
         #Sim.labels[f"load {number}"].text = text
         if Sim.dynamic_colors["loads"]:
-            cyl.color = update_color(p, "loads")
+            cyl.color = update_color(power, "loads")
         else:
             cyl.color = Sim.colors["loads"]
         so = Sim.selected_object
@@ -5119,6 +5149,7 @@ def update_stuff():
 
     # --------- generators ----------------
     for number, cyl in Sim.generators.items():
+
         # try:
         #    power = Data.df[col_name_power(number)][Sim.i]
         #    g_angle = Data.df[col_name_angle(number)][Sim.i]
@@ -5152,8 +5183,26 @@ def update_stuff():
         Sim.pointer0[number].pos.y = cyl.axis.y
         # Sim.discs[number].color = update_color(g_angle, "generators_angle")
         Sim.pointer1[number].color = update_color(g_angle, "generators_angle")
-        Sim.labels[f"generator {number}"].text = f"{power} MW, {g_angle}°"
+
+
         Sim.letters[f"generator {number}"].pos.y = cyl.axis.y
+        # ["none", "p", "angle", "p+angle", "loading"],
+        ###Sim.labels[f"generator {number}"].text = f"{power} MW, {g_angle}°"
+
+        if Sim.label_generator == "p":
+            ff = "p: {" + f":.{Sim.decimals_generator}f" + "}"
+            Sim.labels[f"generator {number}"].text = ff.format(power)
+        elif Sim.label_generator == "angle":
+            ff = "angle: {" + f":.{Sim.decimals_generator}f" + "}"
+            Sim.labels[f"generator {number}"].text = ff.format(g_angle)
+        elif Sim.label_generator == "p+angle":
+            ff = "p: {" + f":.{Sim.decimals_generator}f" + "}" + " angle: {" + f":.{Sim.decimals_generator}f" + "}"
+            Sim.labels[f"generator {number}"].text = ff.format(power, g_angle)
+        elif Sim.label_generator == "loading":
+            ff = "loading: {" + f":.{Sim.decimals_generator}f" + "}"
+            Sim.labels[f"generator {number}"].text = ff.format(loading)
+
+
 
         # print(Sim.i, number, power)
         # color for generator, calculate % mva value
