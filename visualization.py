@@ -5,9 +5,13 @@ import colorsys
 # non-standard-lib
 import pandas as pd  # install with pip install pandas
 import vpython as vp  # install with pip install vpython
+#import sys
+import os
+import signal
+
 #import pyproj
 
-VERSION = "0.30.64"
+VERSION = "0.30.65"
 
 """
 uae geo 2:
@@ -320,6 +324,7 @@ class Data:
 
 
 class Sim:
+    running = True # mainloop
     axis_x = None
     axis_y = None
     axis_z = None
@@ -1198,6 +1203,9 @@ def widget_func_tube_opacity(b):
         tube.opacity = b.value
     for tube in Sim.tubes_storage.values():
         tube.opacity = b.value
+
+def widget_func_quit(b):
+    Sim.running = False
 
 
 def widget_func_time_slider(b):
@@ -3091,6 +3099,9 @@ def create_widgets():
                                        length=600, step=1, disabled=True)
     Sim.gui["label_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f"0/0 time: {Data.df['time'][Sim.i]}")
     # Sim.gui["label_last_frame"] = vp.wtext(pos=Sim.scene.title_anchor, text=f"/{len(Data.df)}")
+    Sim.gui["quit"] = vp.button(pos=Sim.scene.title_anchor,
+                                bind=widget_func_quit,
+                                text="quit")
     Sim.scene.append_to_title("\n")
 
     # Sim.scene.append_to_caption("<code>losses:      |  </code>")
@@ -5403,7 +5414,7 @@ def main():
     simtime = 0
     time_since_framechange = 0
     # frame_number = 0  # Sim.i
-    while True:
+    while Sim.running:
         vp.rate(Sim.fps)
         simtime += Sim.dt
         time_since_framechange += Sim.dt
@@ -5434,6 +5445,10 @@ def main():
             Sim.gui["frameslider"].value = Sim.i
             ## get the data from df (for y values)
             update_stuff()
+    print("bye bye")
+    #sys.exit()
+    # close browser window?
+    os.kill(os.getpid(), signal.SIGINT)
 
 
 if __name__ == "__main__":
