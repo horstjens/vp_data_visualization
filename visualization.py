@@ -11,7 +11,7 @@ import signal
 
 #import pyproj
 
-VERSION = "0.30.65"
+VERSION = "0.30.66"
 
 """
 uae geo 2:
@@ -598,7 +598,9 @@ class Sim:
     cablepower = {}  # (i,j):power
     loads = {}  # consumer of energy
     storages = {}
+    storages_glass = {}
     generators = {}
+    generators_glass = {}
     pointer0 = {}  # to display angle at each generator
     pointer1 = {}  # to display angle at each generator
     discs = {}  # for generators
@@ -1203,6 +1205,12 @@ def widget_func_tube_opacity(b):
         tube.opacity = b.value
     for tube in Sim.tubes_storage.values():
         tube.opacity = b.value
+    # generator glass
+    for glass in Sim.generators_glass.values():
+        glass.opacity = b.value
+    # storage glass
+    for glass in Sim.storages_glass.values():
+        glass.opacity = b.value
 
 def widget_func_quit(b):
     Sim.running = False
@@ -1712,10 +1720,23 @@ def widget_func_toggle_sloped_cables(b):
 #        l.visible = b.checked
 
 
+def update_generator_glass():
+    for number, glass in Sim.generators_glass.items():
+        glass.radius = Sim.generators[number].radius * 1.05
+        glass.axis.y = Sim.generators[number].rating * Sim.factor["generators_h"] + Sim.base["generators_h"]
+        print(glass.axis.y, Sim.generators[number].axis.y)
+
+def update_storage_glass():
+    for number, glass in Sim.storages_glass.items():
+        glass.radius = Sim.storages[number].radius * 1.05
+        glass.axis.y = Sim.storages[number].rating * Sim.factor["storages_h"] + Sim.base["storages_h"]
+
 def widget_func_generators_factor_h(b):
     # print("the y factor for generators is now:", b.number)
     Sim.factor["generators_h"] = b.number
     update_stuff()
+    update_generator_glass()
+
 
 
 def widget_func_cables_factor_h(b):
@@ -1726,6 +1747,7 @@ def widget_func_cables_factor_h(b):
 def widget_func_generators_factor_r(b):
     Sim.factor["generators_r"] = b.number
     update_stuff()
+    update_generator_glass()
 
 
 def widget_func_loads_factor_r(b):
@@ -1738,22 +1760,27 @@ def widget_func_loads_factor_r(b):
 def widget_func_generators_base_h(b):
     Sim.base["generators_h"] = b.number
     update_stuff()
+    update_generator_glass()
 
 def widget_func_storages_base_h(b):
     Sim.base["storages_h"] = b.number
     update_stuff()
+    update_storage_glass()
 
 def widget_func_storages_base_r(b):
     Sim.base["storages_r"] = b.number
     update_stuff()
+    update_storage_glass()
 
 def widget_func_storages_factor_h(b):
     Sim.factor["storages_h"] = b.number
     update_stuff()
+    update_storage_glass()
 
 def widget_func_storages_factor_r(b):
     Sim.factor["storages_r"] = b.number
     update_stuff()
+    update_storage_glass()
 
 def widget_func_flying_arrows_speed_min(b):
     Sim.arrows_speed_min = b.number
@@ -1771,6 +1798,7 @@ def widget_func_cables_base_h(b):
 def widget_func_generators_base_r(b):
     Sim.base["generators_r"] = b.number
     update_stuff()
+    update_generator_glass()
 
 
 def widget_func_nodes_factor_h(b):
@@ -2334,6 +2362,22 @@ def widget_func_start_simulation(b):
     # update gui so that cables can be toggled
     Sim.gui["box_cables"].disabled = False
 
+    # create glass cylinder for each generator
+    for number, cyl in Sim.generators.items():
+        #print(number, cyl, cyl.rating)
+        Sim.generators_glass[number] = vp.cylinder(pos = cyl.pos,
+                                                   radius = cyl.radius * 1.05,
+                                                   axis=vp.vector(0, cyl.rating * Sim.factor["generators_h"] + Sim.base["generators_h"], 0),
+                                                   color=vp.color.white,
+                                                   opacity=Sim.tubes_opacity)
+    # create glass cylinder for each storage
+    for number, cyl in Sim.storages.items():
+        print(number, cyl, cyl.rating)
+        Sim.storages_glass[number] = vp.cylinder(pos=cyl.pos,
+                                                 radius=cyl.radius * 1.05,
+                                                 axis=vp.vector(0, cyl.rating * Sim.factor["storages_h"] + Sim.base["storages_h"], 0),
+                                                 color=vp.color.white,
+                                                 opacity=Sim.tubes_opacity)
     # free camera
     Sim.scene.userspin = True
     # make invisible: direct gold lines between nodes (the cables) and little pink cylinders between nodes (the sub-nodes)
@@ -4674,6 +4718,8 @@ def create_stuff():
                                                     )
             Sim.storages[node_number].what = "storage"
             Sim.storages[node_number].number = node_number  # storage number
+            Sim.storages[node_number].rating = Data.df_locations["storage_rating"][node_number - 1]
+            print("storage:", node_number, "rating:", Data.df_locations["storage_rating"][node_number - 1])
             # gnumber = Data.nodes_to_generators[number]
             # Sim.generators[is_generator].node_number = number  # corresponding node number
             Sim.letters[f"storage {node_number}"] = vp.label(text=f"{name.lower()}", color=vp.color.white,
@@ -4720,6 +4766,8 @@ def create_stuff():
                                                        )
             Sim.generators[node_number].what = "generator"
             Sim.generators[node_number].number = node_number  # generator_number
+            Sim.generators[node_number].rating = Data.df_locations["generator_rating"][node_number-1]
+            print("generator:", node_number, "rating:", Data.df_locations["generator_rating"][node_number-1])
             # gnumber = Data.nodes_to_generators[number]
             #Sim.generators[is_generator].node_number = number  # corresponding node number
             Sim.letters[f"generator {node_number}"] = vp.label(text=f"{name.lower()}", color=vp.color.white,
