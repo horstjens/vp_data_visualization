@@ -11,7 +11,7 @@ import signal
 
 #import pyproj
 
-VERSION = "0.30.66"
+VERSION = "0.30.67"
 
 """
 uae geo 2:
@@ -604,6 +604,7 @@ class Sim:
     pointer0 = {}  # to display angle at each generator
     pointer1 = {}  # to display angle at each generator
     discs = {}  # for generators
+    pie_charts = {} # for cables (middle)
     generator_lines = {}  # between node and generator
     load_lines = {}  # between node and load
     storage_lines = {} # between node and storage
@@ -2327,19 +2328,20 @@ def widget_func_animation_duration(b):
 
 
 def widget_func_start_simulation(b):
+    # create stuff after "start simulation" button was clicked
     Sim.scene.select()
     Sim.gui["create_curves"].disabled=False
-    Sim.gui["wait_label"] = vp.label(pixel_pos=True,
-                                     pos=vp.vector(Sim.canvas_width/2, Sim.canvas_height/2,0),
-                                     height=48,
-                                     color=vp.color.purple,
-                                     text="please wait....",
-                                     align="center",
-                                     visible=True,
-                                     )
+    #Sim.gui["wait_label"] = vp.label(pixel_pos=True,
+    #                                 pos=vp.vector(Sim.canvas_width/2, Sim.canvas_height/2,0),
+    #                                 height=48,
+    #                                 color=vp.color.purple,
+    #                                 text="please wait....",
+    #                                 align="center",
+    #                                 visible=True,
+    #                                 )
     #create_stuff2_curves()
     Sim.scene.select()
-    Sim.gui["wait_label"].visible = False
+    #Sim.gui["wait_label"].visible = False
     layout_save()
     # enable preset buttons
     Sim.gui["preset"].disabled = False
@@ -2378,6 +2380,32 @@ def widget_func_start_simulation(b):
                                                  axis=vp.vector(0, cyl.rating * Sim.factor["storages_h"] + Sim.base["storages_h"], 0),
                                                  color=vp.color.white,
                                                  opacity=Sim.tubes_opacity)
+
+    # create little pie charts for loading at each cable "middle" disc
+    Sim.pie_points = [] # curve points for pie chart from 0 to 100 % , 100 points, starting at right, moving counter-clock-wise
+    for i in vp.arange(0, -vp.pi*2, -vp.pi*2/100):
+        Sim.pie_points.append(vp.vec(vp.cos(i) * Sim.base["middles_r"] * 1.05,
+                                     0,
+                                     vp.sin(i) * Sim.base["middles_r"] * 1.05,
+                                     ))
+    print("middles:")
+    for (i,j), disc in Sim.cables_middle.items():
+        loading = Data.df[f"cable_loading_{i}_{j}"][Sim.i] # value from 0 to 100 ? (is percent?)
+        #print(i,j, disc, loading)
+        points = [v + disc.pos + vp.vec(0, disc.axis.y,0) for v in Sim.pie_points]
+        Sim.pie_charts[(i,j)] = vp.curve(pos = points, color=vp.color.green, radius=Sim.base["middles_r"] * 0.4 )
+
+
+        #Sim.pie_charts[(i,j)] = vp.extrusion()
+    #Sim.discs[node_number] = vp.extrusion(path=[start, vp.vector(start.x, start.y + 0.001, start.z)],
+    #                                      shape=vp.shapes.circle(radius=Sim.base["generators_r"] * 1.25,
+    #                                                             # 0.05 SHOould be parameter!
+    #                                                             angle1=vp.radians(170),
+    #                                                             angle2=vp.radians(-170)),
+    #                                      pickable=False)
+
+
+
     # free camera
     Sim.scene.userspin = True
     # make invisible: direct gold lines between nodes (the cables) and little pink cylinders between nodes (the sub-nodes)
@@ -4059,7 +4087,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["node_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting voltage curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting voltage curve for {node_number}"
     # print(Sim.gui["node_c"])
 
     # ==========================================================================
@@ -4077,7 +4105,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["load_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting load curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting load curve for {node_number}"
     # print(Sim.gui["node_c"])
 
     #==========================================================
@@ -4096,7 +4124,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["generator_angle_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting generator angle curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting generator angle curve for {node_number}"
     # print(Sim.gui["node_c"])
 
     #================================================================================
@@ -4114,7 +4142,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["generator_power_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting generator power curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting generator power curve for {node_number}"
     # print(Sim.gui["node_c"])
 
     # ==================================================================00
@@ -4132,7 +4160,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["generator_loading_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting generator loading curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting generator loading curve for {node_number}"
 
     #====================================================================
     # ---------------- storage power xy diagram --------------- 4th row, right --------------
@@ -4149,7 +4177,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["storage_power_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting storage power curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting storage power curve for {node_number}"
 
     #=======================================================================
     # -----------cable loading xy diagram ------------- 5th row, left ---------------
@@ -4166,7 +4194,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["cable_loading_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting cable loading curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting cable loading curve for {node_number}"
     Sim.time_indicator_dia8 = vp.curve(canvas=Sim.scene_dia8, color=vp.color.green,
                                        pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
     Sim.scene_dia8.center = vp.vector(100, 50, 0)
@@ -4186,7 +4214,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["cable_power_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting cable power curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting cable power curve for {node_number}"
 
     #==============================================================================
     # -------- storage loading  diagram xy            6th row, left -------------------
@@ -4204,7 +4232,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["storage_loading_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting storage loading curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting storage loading curve for {node_number}"
 
     # =======================================================================
     #---------------------storage state xy diagram          r06th row, right-------------
@@ -4221,7 +4249,7 @@ def create_stuff2_curves():
             x = x * 200
             fdata.append(vp.vector(x, y, 0))
         Sim.gui["storage_state_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        Sim.gui["wait_label"].text=f"plotting storage state curve for {node_number}"
+        #Sim.gui["wait_label"].text=f"plotting storage state curve for {node_number}"
 
 
 
@@ -4662,11 +4690,6 @@ def create_stuff():
                                                   opacity=0))
 
     # ============== create nodes (busbars) according to geodata =============
-
-
-    #print("----------------")
-
-
     for node_number in Data.node_numbers:
         # print("create stuff: node # ", number, type(number), Data.nodes[number])
         # move node objects on map
@@ -4674,10 +4697,7 @@ def create_stuff():
         z = geo_to_local(z)
         y = 0
         name = Data.node_names[node_number]
-        #is_generator = Data.nodes[number][2]  # number|False
-        #is_load = Data.nodes[number][3]  # True|False
         npos = vp.vector(x, 0, z)
-        # print("create node ", number, x, z, is_generator, is_load)
         Sim.nodes[node_number] = vp.cylinder(pos=npos,
                                         color=Sim.colors["nodes"],
                                         radius=Sim.base["nodes_r"],
@@ -4743,11 +4763,8 @@ def create_stuff():
                                                         color=Sim.colors["storage_lines"],
                                                         pickable=False)
 
-        #if is_generator:
+        #if is_generator: -------------------- generator ------------------------
         if node_number in Data.generators:
-            # find out connected generator_number
-            ##gnumber = Data.nodes_to_generators[number]
-            # gnumber = number + 0
             # gpos is on a line from the center to the  connected node pos and a bit more
             gpos = npos + vp.norm(npos - Sim.center) * Sim.base["generators_r"] * 3  # TODO: 3 should be parameter!
             # print("create generator ", number)
@@ -4819,7 +4836,7 @@ def create_stuff():
                                                          color=Sim.colors["generator_lines"],
                                                          pickable=False)
 
-        #if is_load:
+        #if is_load: ------------------------- load ---------------------
         if node_number in Data.loads:
             # create load
             # lpos is on a line from the center to the  connected node pos but a bit less
@@ -4849,7 +4866,7 @@ def create_stuff():
                                               radius=0,
                                               color=Sim.colors["load_lines"],
                                               pickable=False)
-    # ----- create CABLES ----
+    # ----- create CABLES ---- --------------------------------------------------------------------
     for i, to_number_list in Data.cables_dict.items():
         for j in to_number_list:
             from_node = Sim.nodes[i]
@@ -5383,6 +5400,37 @@ def update_stuff():
                 #Sim.labels[
                 #    f"cable {number}-{target}"].text = f"power: {power:.2f} loss: {loss:.2f} loading: {loading:.2f} flow:{flow}"
                 Sim.labels[f"cable {number}-{target}"].text = text
+
+                # update pie chart
+                disc = Sim.cables_middle[(number, target)]
+                points = [v + disc.pos + vp.vec(0, disc.axis.y, 0) for v in Sim.pie_points]
+                l = int(loading)
+                pie_curve = Sim.pie_charts[(number, target)]
+                if pie_curve.npoints != l:
+                    # make new points
+                    pie_curve.clear()
+                    #pie_curve.unshift(points[:l])
+                    for v in points[:l]:
+                        pie_curve.append(v)
+                    #pie_curve.append(points[:l])
+                    #pie_curve.pos = points[:l]
+                    #pie_curve.unshift(0,points[:l])
+                    #for _ in range(l, pie_curve.npoints):
+                    #    pie_curve.pop(-1)
+                    # too many points
+                    #if pie_curve.npoints > l:
+                    #    for n in range(l, pie_curve.npoints+1):
+                    #        pie_curve.pop(n)
+                    # not enough points
+                    #elif pie_curve.npoints < l:
+                        #for n in range(pie_curve.npoints, l):
+                        # slice: startpoint, howmany, pointlist
+                    #    pie_curve.splice(pie_curve.npoints, l-pie_curve.npoints, points[pie_curve.npoints:])
+                    #for n in range(pie_curve.npoints):
+                    #    pie_curve.
+                #Sim.pie_charts[(i, j)] = vp.curve(pos=points, color=vp.color.green, radius=Sim.base["middles_r"] * 0.4)
+
+
                 so = Sim.selected_object
                 if so is not None and so.what == "middle" and so.number == (number, target):
                     # Sim.labels[f"cable {number}-{target}"].text
