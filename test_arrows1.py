@@ -20,7 +20,9 @@ class Sim:
     letters = {}
     cables = {}
     arrowspeed = 1.15
-    blackarrows = {}
+    arrow_length = 0.5
+    blackarrows = {"AB":[]}
+    max_arrows = 0
     points = []
     distances = []
 
@@ -28,13 +30,14 @@ class Sim:
 
 class Shadowarrow(vp.arrow):
 
-    def __init__(self, nodestring, flow, **kwargs):
+    def __init__(self, nodestring="AB", flow=True, **kwargs):
         super().__init__(**kwargs)
         if nodestring not in Sim.blackarrows:
             Sim.blackarrows[nodestring] = []
         Sim.blackarrows[nodestring].append(self)
         self.nodestring = nodestring
         self.flow = flow
+        self.speed = Sim.arrowspeed
         self.color = vp.color.black
         self.shaftwidth = 0.03
 
@@ -49,27 +52,32 @@ class Shadowarrow(vp.arrow):
             self.next_node = -2
             self.previous_node = -1
             self.axis = vp.norm(Sim.points[-2]-Sim.points[-1])
-        self.axis = vp.norm(self.axis) * 0.5
+        self.axis = vp.norm(self.axis) * Sim.arrow_length
         self.pos = Sim.points[index] - self.axis
 
     def update(self):
-        self.pos += Sim.arrowspeed * Sim.dt * vp.norm(self.axis)
+        self.pos += self.speed * Sim.dt * vp.norm(self.axis)
+        self.distance_from_previous_point = vp.mag(self.pos - Sim.points[self.previous_node])
         if self.flow:
-            self.distance_from_old_point = vp.mag(self.pos - Sim.points[self.previous_node])
-
             if self.next_node < len(Sim.points):
-                if (self.distance_from_old_point + vp.mag(self.axis)/2 )> (Sim.distances[self.next_node]-Sim.distances[self.previous_node]):
+                if (self.distance_from_previous_point + vp.mag(self.axis)/2 )> (Sim.distances[self.next_node]-Sim.distances[self.previous_node]):
                     self.pos = Sim.points[self.next_node]
                     if self.next_node < (len(Sim.points)-1):
-                        self.axis = vp.norm(Sim.points[self.next_node+1]-Sim.points[self.next_node]) * 0.5
+                        self.axis = vp.norm(Sim.points[self.next_node+1]-Sim.points[self.next_node]) * Sim.arrow_length
                     else:
                         pass # dont change axis
                     self.pos -= self.axis/2
                     self.previous_node += 1
                     self.next_node += 1
             else:
-                if self.distance_from_old_point > vp.mag(self.axis)/2:
-                    self.visible = False
+                if self.distance_from_previous_point > vp.mag(self.axis)/2:
+                    #self.visible = False
+                    self.color = vp.color.red
+                    # go to waiting
+                    self.speed = 0
+        #else: # flow = False
+            #if self.next_node > 0:
+                #if (self.distance_from_previous_point + vp.mag(self.axis)/2) > (Sim)
 
 
 
@@ -107,16 +115,27 @@ def create_stuff():
                                   opacity=0)
     Sim.points = [box.pos for box in Sim.cables["AB"]] # list of vectors
     Sim.distances = []
-
     for n, point in enumerate(Sim.points):
         if n == 0:
             distance = 0
         else:
             distance += vp.mag(point - Sim.points[n-1])
         Sim.distances.append(distance)
+    Sim.max_arrows = Sim.distances[-1] / Sim.arrow_length / 2
     # create 2 black arrows
-    Shadowarrow("AB", True)
-    Shadowarrow("AB", False)
+    #Shadowarrow("AB", True)
+    #Shadowarrow("AB", False)
+
+
+def get_min_distance(nodestring="AB"):
+    # get minmial distance from point A to closest Arrow
+    min_distance = Sim.distances[-1] # maximal possible distance
+    for a in Sim.blackarrows[nodestring]:
+        if a.flow:
+            distance = a.distance_from_previous_point + Sim.distances[a.previous_node]
+            if distance < min_distance:
+                min_distance = distance
+    return min_distance
 
 
 def main():
@@ -130,6 +149,33 @@ def main():
         time_since_framechange += Sim.dt
         # print("simtime", simtime)
         if Sim.running:
+            # spawn arrows
+            print("arrows:", len(Sim.blackarrows), Sim.max_arrows)
+            if len(Sim.blackarrows["AB"]) < Sim.max_arrows:
+                if len(Sim.blackarrows["AB"]) == 0:
+                    Shadowarrow()
+                else:
+                    mindist = get_min_distance("AB")
+                    if mindist > Sim.arrow_length * 2:
+
+                        waiting_arrows = [a for a in Sim.blackarrows["AB"] if a.speed == 0]
+                        if len(waiting_arrows) == 0:
+                            Shadowarrow()
+                        else:
+                            # recycle one of the red waiting arrows
+                            a = waiting_arrows[0]
+                            a.pos = Sim.points[0]
+                            a.axis = vp.norm(Sim.points[1]-Sim.points[0]) * Sim.arrow_length
+                            a.pos -= a.axis /2
+                            a.visible = True
+                            a.color=vp.color.black
+                            a.speed = Sim.arrowspeed
+                            a.previous_node = 0
+                            a.next_node = 1
+
+                    
+            
+            # move arrows
             for nodestring, arrowlist in Sim.blackarrows.items():
                 for blackarrow in arrowlist:
                     blackarrow.update()
