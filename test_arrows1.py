@@ -19,8 +19,10 @@ class Sim:
     #nodes = {}
     letters = {}
     cables = {}
-    arrowspeed = 0.08
+    arrowspeed = 1.15
     blackarrows = {}
+    points = []
+    distances = []
 
 
 
@@ -35,32 +37,39 @@ class Shadowarrow(vp.arrow):
         self.flow = flow
         self.color = vp.color.black
         self.shaftwidth = 0.03
-        cables = Sim.cables[self.nodestring] # list of boxes !
-        self.distances_ab = []
-        total_distance = 0
-        for n, box in enumerate(cables):
-            distance = box.pos - cables[0].pos
-            self.distances_ab.append(distance)
-
 
         # get pos from nodestring and flow
         if flow:
             index = 0     # fly from A to B
             self.next_node = 1
-            self.old_node = 0
-            self.axis = vp.norm(cables[1].pos-cables[0].pos)
+            self.previous_node = 0
+            self.axis = vp.norm(Sim.points[1]-Sim.points[0])
         else:
             index = -1    # fly from B to A
             self.next_node = -2
-            self.old_node = -1
-            self.axis = vp.norm(cables[-2].pos-cables[-1].pos)
+            self.previous_node = -1
+            self.axis = vp.norm(Sim.points[-2]-Sim.points[-1])
         self.axis = vp.norm(self.axis) * 0.5
-        self.pos = cables[index].pos - self.axis
+        self.pos = Sim.points[index] - self.axis
 
     def update(self):
         self.pos += Sim.arrowspeed * Sim.dt * vp.norm(self.axis)
         if self.flow:
-            pass
+            self.distance_from_old_point = vp.mag(self.pos - Sim.points[self.previous_node])
+
+            if self.next_node < len(Sim.points):
+                if (self.distance_from_old_point + vp.mag(self.axis)/2 )> (Sim.distances[self.next_node]-Sim.distances[self.previous_node]):
+                    self.pos = Sim.points[self.next_node]
+                    if self.next_node < (len(Sim.points)-1):
+                        self.axis = vp.norm(Sim.points[self.next_node+1]-Sim.points[self.next_node]) * 0.5
+                    else:
+                        pass # dont change axis
+                    self.pos -= self.axis/2
+                    self.previous_node += 1
+                    self.next_node += 1
+            else:
+                if self.distance_from_old_point > vp.mag(self.axis)/2:
+                    self.visible = False
 
 
 
@@ -86,7 +95,7 @@ def create_stuff():
     Sim.cables["AB"] = []
     for n in range(10):
         x = Sim.mapsize/10 * n + 0.5
-        z = vp.random()  * (Sim.mapsize -1) + 0.5
+        z = vp.random()  * ((Sim.mapsize-1)/2 ) + 0.5
         Sim.cables["AB"].append(vp.box(pos=vp.vector(x, 0.0, z),
                                        size=vp.vector(0.2, 0.2, 0.2),
                                        color=vp.color.cyan,
@@ -96,6 +105,15 @@ def create_stuff():
                                   color=vp.color.black,
                                   box=False,
                                   opacity=0)
+    Sim.points = [box.pos for box in Sim.cables["AB"]] # list of vectors
+    Sim.distances = []
+
+    for n, point in enumerate(Sim.points):
+        if n == 0:
+            distance = 0
+        else:
+            distance += vp.mag(point - Sim.points[n-1])
+        Sim.distances.append(distance)
     # create 2 black arrows
     Shadowarrow("AB", True)
     Shadowarrow("AB", False)
