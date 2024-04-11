@@ -1,11 +1,12 @@
 import vpython as vp
 
+VERSION = "1B"
 
 class Sim:
     running = False
     mapsize = 10
     scene = vp.canvas(title=f'arrow demo',
-                      # caption="coordinates: ",
+                      caption=f"version {VERSION} ",
                       width=1200, height=800,
                       # center=vp.vector(middle[0], 0, middle[1]),
                       background=vp.color.gray(0.3),
@@ -36,20 +37,20 @@ class Shadowarrow(vp.arrow):
             flying from next_point to previous_point
     
     """
-    def __init__(self, nodestring="AB", flow=True, **kwargs):
+    def __init__(self, nodestring="AB", **kwargs):
         super().__init__(**kwargs)
         #print("black arrow created")
         if nodestring not in Sim.blackarrows:
             Sim.blackarrows[nodestring] = []
         Sim.blackarrows[nodestring].append(self)
         self.nodestring = nodestring
-        self.flow = flow
+        self.flow = Sim.arrow_flow
         self.speed = Sim.arrowspeed
         self.color = vp.color.black
         self.shaftwidth = 0.03
 
         # get pos from nodestring and flow
-        if flow:
+        if self.flow:
             index = 0  # fly from A to B
             self.next_point = 1
             self.previous_point = 0
@@ -71,15 +72,19 @@ class Shadowarrow(vp.arrow):
     def update(self):
         self.pos += self.speed * Sim.dt * vp.norm(self.axis)
         # magnitude of a vector is always positive
-        try:
+        if self.previous_point is not None:
             self.distance_from_previous_point = vp.mag(self.pos - Sim.points[self.previous_point])
+        if self.next_point is not None:
             self.distance_from_next_point = vp.mag(self.pos - Sim.points[self.next_point])
-        except IndexError:
-            print("IndexError", self.previous_point, self.next_point)
+        #except IndexError:
+        #    print("IndexError", self.previous_point, self.next_point)
+        #    if self.next_point == len(Sim.points):
+        #        self.next_point -= 1
 
         if self.flow:
             # flying from previous point to next point
-            if self.next_point < len(Sim.points):
+            #if self.next_point < len(Sim.points):
+            if self.next_point is not None and self.previous_point is not None:
                 # not at end
                 if (self.distance_from_previous_point + vp.mag(self.axis) / 2) > (
                         Sim.distances[self.next_point] - Sim.distances[self.previous_point]):
@@ -93,6 +98,9 @@ class Shadowarrow(vp.arrow):
                     self.pos -= self.axis / 2
                     self.previous_point += 1
                     self.next_point += 1
+
+                    if self.next_point >= len(Sim.points):
+                        self.next_point = None
             else: # at end
                 if self.distance_from_previous_point > vp.mag(self.axis) / 2:
                     # self.visible = False
@@ -101,21 +109,25 @@ class Shadowarrow(vp.arrow):
                     self.speed = 0
         elif not self.flow:
             # flying from next point to previous point
-            if self.previous_point > 0:
+            #if self.previous_point >= 0:
+            if self.previous_point is not None and self.next_point is not None:
                 # not at end
+                #print(self.next_point, self.previous_point)
                 if (self.distance_from_next_point + vp.mag(self.axis) / 2) > (
                         Sim.distances[self.next_point] - Sim.distances[self.previous_point]):
                     # reached new point
                     self.pos = Sim.points[self.previous_point]
-                    if self.previous_point> 1:
-                        self.axis = vp.norm(Sim.points[self.previous_point - 1] - Sim.points[self.previous_point]) * Sim.arrow_length
+                    if self.previous_point>= 1:
+                        self.axis = vp.norm(Sim.points[self.previous_point -1] - Sim.points[self.previous_point]) * Sim.arrow_length
                     else:
                         pass  # dont change axis
                     self.pos -= self.axis / 2
                     self.previous_point -= 1
+                    if self.previous_point < 0:
+                        self.previous_point = None
                     self.next_point -= 1
             else: # at end
-                if self.distance_from_previous_point > vp.mag(self.axis) / 2:
+                if self.distance_from_next_point > vp.mag(self.axis) :
                     # self.visible = False
                     self.color = vp.color.red
                     # go to waiting
@@ -181,6 +193,7 @@ def get_min_distance(nodestring="AB"):
     min_distance = Sim.distances[-1]  # maximal possible distance
     for a in Sim.blackarrows[nodestring]:
         if a.flow:
+            #print(a.previous_point)
             distance = a.distance_from_previous_point + Sim.distances[a.previous_point]
             if distance < min_distance:
                 min_distance = distance
@@ -206,21 +219,27 @@ def main():
                 else:
                     mindist = get_min_distance("AB")
                     if mindist > Sim.arrow_length * 2:
-
                         waiting_arrows = [a for a in Sim.blackarrows["AB"] if a.speed == 0]
                         if len(waiting_arrows) == 0:
                             Shadowarrow()
                         else:
                             # recycle one of the red waiting arrows
                             a = waiting_arrows[0]
-                            a.pos = Sim.points[0]
-                            a.axis = vp.norm(Sim.points[1] - Sim.points[0]) * Sim.arrow_length
+                            if a.flow:
+                                a.pos = Sim.points[0]
+                                a.axis = vp.norm(Sim.points[1] - Sim.points[0]) * Sim.arrow_length
+                                a.previous_point = 0
+                                a.next_point = 1
+                            else:
+                                a.pos = Sim.points[-1]
+                                a.axis = vp.norm(Sim.points[-2] - Sim.points[-1]) * Sim.arrow_length
+                                a.previous_point = len(Sim.points) -2
+                                a.next_point = len(Sim.points) - 1
                             a.pos -= a.axis
                             a.visible = True
                             a.color = vp.color.black
                             a.speed = Sim.arrowspeed
-                            a.previous_point = 0
-                            a.next_point = 1
+
 
             # move arrows
             #print("moving arrows")
