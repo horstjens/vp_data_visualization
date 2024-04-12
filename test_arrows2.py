@@ -1,6 +1,6 @@
 import vpython as vp
 
-VERSION = "2"
+VERSION = "2a"
 
 class Sim:
     running = False
@@ -18,13 +18,16 @@ class Sim:
     # nodes = {}
     letters = {}
     cables = {}
-    arrow_speed = 1.15
-    arrow_length = 0.5
+    arrow_speed = 0.45
+    arrow_turn_speed = 90 # ° per second?
+    arrow_length = 0.25
     arrow_flow = True   # fly from A to B. False: B to A
+    arrow_spacing = 2.5 # 2 arrowlengths from tip to tip
     blackarrows = {"AB": []}
     max_arrows = 0
     points = []
     distances = []
+
 
 
 
@@ -48,6 +51,8 @@ class Shadowarrow(vp.arrow):
         self.speed = Sim.arrow_speed
         self.color = vp.color.black
         self.shaftwidth = 0.03
+        self.turning = False
+        self.turn_direction = 1
 
         # get pos from nodestring and flow
         if self.flow:
@@ -61,12 +66,19 @@ class Shadowarrow(vp.arrow):
             self.previous_point = -1
             self.axis = vp.norm(Sim.points[-2] - Sim.points[-1])
         self.axis = vp.norm(self.axis) * Sim.arrow_length
+        self.fly_direction = vp.vector(self.axis.x, self.axis.y, self.axis.z)
         self.pos = Sim.points[index] - self.axis
 
     def flip_direction(self):
-        middle = self.pos + self.axis / 2
+        #if not self.turning:
+        #    middle = self.pos + self.axis / 2
+        #    self.axis = -self.axis
+        #    self.pos = middle - self.axis / 2
+        #else:
+        middle = self.pos + self.fly_direction / 2
         self.axis = -self.axis
-        self.pos = middle - self.axis / 2
+        self.pos = middle - self.fly_direction / 2
+        self.fly_direction = -self.fly_direction
         self.flow = Sim.arrow_flow
         # remove arrows with a None..
         if (self.next_point is None) or (self.previous_point is None):
@@ -74,7 +86,8 @@ class Shadowarrow(vp.arrow):
             self.speed = 0
 
     def update(self):
-        self.pos += self.speed * Sim.dt * vp.norm(self.axis)
+
+        self.pos += self.speed * Sim.dt * vp.norm(self.fly_direction)
         # magnitude of a vector is always positive
         if self.previous_point is not None:
             self.distance_from_previous_point = vp.mag(self.pos - Sim.points[self.previous_point])
@@ -84,18 +97,41 @@ class Shadowarrow(vp.arrow):
         #    print("IndexError", self.previous_point, self.next_point)
         #    if self.next_point == len(Sim.points):
         #        self.next_point -= 1
+        #if self.axis != self.fly_direction:
+        #    self.turing = True
+        #else:
+        #    self.turing = False
+        diff_angle = vp.diff_angle(self.fly_direction, self.axis)
+        #print("diff angle, abs", diff_angle, abs(diff_angle))
+        if abs(vp.diff_angle(self.fly_direction, self.axis )) > 0.05:
+            self.turning = True
+        else:
+            self.axis = vp.vector(self.fly_direction.x, self.fly_direction.y, self.fly_direction.z)
+            self.turning = False
+        if self.turning:
+            diff_angle_old = abs(vp.diff_angle(self.fly_direction, self.axis))
+            #print("diff_angle:", vp.degrees(diff_angle), self.previous_point, self.next_point)
+            oldpos = self.pos
+            self.rotate(origin=self.pos + self.axis / 2,
+                        angle=vp.radians(Sim.arrow_turn_speed) * Sim.dt * self.turn_direction,
+                        axis=vp.vector(0, 1, 0))
+            self.pos = oldpos
+            diff_angle_new = abs(vp.diff_angle(self.fly_direction, self.axis))
+            if diff_angle_new > diff_angle_old:
+                self.turn_direction *= -1
+
 
         if self.flow:
             # flying from previous point to next point
             #if self.next_point < len(Sim.points):
             if self.next_point is not None and self.previous_point is not None:
                 # not at end
-                if (self.distance_from_previous_point + vp.mag(self.axis) / 2) > (
+                if (self.distance_from_previous_point + vp.mag(self.fly_direction) / 2) > (
                         Sim.distances[self.next_point] - Sim.distances[self.previous_point]):
                     # reached new point
                     self.pos = Sim.points[self.next_point]
                     if self.next_point < (len(Sim.points) - 1):
-                        self.axis = vp.norm(
+                        self.fly_direction = vp.norm(
                             Sim.points[self.next_point + 1] - Sim.points[self.next_point]) * Sim.arrow_length
                     else:
                         pass  # dont change axis
@@ -122,7 +158,9 @@ class Shadowarrow(vp.arrow):
                     # reached new point
                     self.pos = Sim.points[self.previous_point]
                     if self.previous_point>= 1:
-                        self.axis = vp.norm(Sim.points[self.previous_point -1] - Sim.points[self.previous_point]) * Sim.arrow_length
+                        #self.axis = vp.norm(Sim.points[self.previous_point -1] - Sim.points[self.previous_point]) * Sim.arrow_length
+                        self.fly_direction = vp.norm(
+                            Sim.points[self.previous_point - 1] - Sim.points[self.previous_point]) * Sim.arrow_length
                     else:
                         pass  # dont change axis
                     self.pos -= self.axis / 2
@@ -186,7 +224,8 @@ def create_stuff():
         else:
             distance += vp.mag(point - Sim.points[n - 1])
         Sim.distances.append(distance)
-    Sim.max_arrows = Sim.distances[-1] / Sim.arrow_length / 2
+    Sim.max_arrows = Sim.distances[-1] / (Sim.arrow_length * Sim.arrow_spacing)
+    print(Sim.distances[-1], Sim.max_arrows)
     # create 2 black arrows
     # Shadowarrow("AB", True)
     # Shadowarrow("AB", False)
@@ -240,16 +279,18 @@ def main():
                             if a.flow:
                                 a.pos = Sim.points[0]
                                 a.axis = vp.norm(Sim.points[1] - Sim.points[0]) * Sim.arrow_length
+                                a.fly_direction = vp.norm(Sim.points[1]-Sim.points[0]) * Sim.arrow_length
                                 a.previous_point = 0
                                 a.next_point = 1
                             else:
                                 a.pos = Sim.points[-1]
                                 a.axis = vp.norm(Sim.points[-2] - Sim.points[-1]) * Sim.arrow_length
+                                a.fly_direction = vp.norm(Sim.points[-2] - Sim.points[-1]) * Sim.arrow_length
                                 a.previous_point = len(Sim.points) -2
                                 a.next_point = len(Sim.points) - 1
                             a.pos -= a.axis
                             a.visible = True
-                            a.color = vp.color.black
+                            a.color = vp.color.purple
                             a.speed = Sim.arrow_speed
 
 
