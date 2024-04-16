@@ -76,15 +76,37 @@ class Shadowarrow(vp.arrow):
         #    self.axis = -self.axis
         #    self.pos = middle - self.axis / 2
         #else:
-        middle = self.pos + self.fly_direction / 2
-        self.axis = -self.axis
-        self.pos = middle - self.fly_direction / 2
-        self.fly_direction = -self.fly_direction
-        self.flow = Sim.arrow_flow
+        #middle = self.pos + self.fly_direction / 2
+        #self.axis = -self.axis
+        #self.pos = middle - self.fly_direction / 2
+        #self.fly_direction = -self.fly_direction
+        #self.flow = Sim.arrow_flow
         # remove arrows with a None..
-        if (self.next_point is None) or (self.previous_point is None):
-            self.color = vp.color.orange
-            self.speed = 0
+        #if (self.next_point is None) or (self.previous_point is None):
+        #    self.color = vp.color.orange
+        #    self.speed = 0
+        # ------- new code --------
+        ##if (self.next_point is None) or (self.previous_point is None):
+        ##    self.color = vp.color.orange
+        ##   self.speed = 0
+
+        self.flow = Sim.arrow_flow
+        self.fly_direction *= -1
+        self.axis *= -1
+        if self.flow: # from A to B
+            if self.next_point is not None:
+                self.new_axis = vp.norm(Sim.points[self.next_point]-Sim.points[self.previous_point]) * Sim.arrow_length
+            else:
+                self.new_axis = vp.norm(Sim.points[self.previous_point]-Sim.points[self.previous_point-1]) * Sim.arrow_length
+
+        else: # from B to A
+            if self.previous_point is not None:
+                self.new_axis = vp.norm(Sim.points[self.previous_point]-Sim.points[self.next_point]) * Sim.arrow_length
+            else:
+                self.new_axis = vp.norm(
+                    Sim.points[self.next_point] - Sim.points[self.next_point]+1) * Sim.arrow_length
+
+
 
     def update(self):
 
@@ -133,20 +155,26 @@ class Shadowarrow(vp.arrow):
                 prev_to_tail = self.distance_from_previous_point
                 full_length = Sim.distances[self.next_point] - Sim.distances[self.previous_point]
                 if prev_to_tail < full_length < prev_to_tip:
-                    try:
-                        self.new_axis = vp.norm(
-                            Sim.points[self.next_point + 1] - Sim.points[self.next_point]) * Sim.arrow_length
-                    except IndexError:
+                    #try: # if self.next_point + 1 == len(Sim.points) -> IndexError
+                    #    self.new_axis = vp.norm(
+                    #        Sim.points[self.next_point + 1] - Sim.points[self.next_point]) * Sim.arrow_length
+                    #except IndexError:
+                    #    pass # do not change new_axis
+                    if (self.next_point+1) < len(Sim.points): # no IndexError
+                        self.new_axis = vp.norm(Sim.points[self.next_point + 1] - Sim.points[self.next_point]) * Sim.arrow_length
+                    else:
                         pass # do not change new_axis
                 elif prev_to_tail > full_length:
                     self.pos = Sim.points[self.next_point]
                     self.fly_direction = vp.vector(self.new_axis.x, self.new_axis.y,self.new_axis.z)
 
                     # reached new point, end turning
-                    try:
+                    if (self.next_point + 1) < len(Sim.points):  # no IndexError
                         self.new_axis = vp.norm(Sim.points[self.next_point+1]-Sim.points[self.next_point]) * Sim.arrow_length
-                    except IndexError:
-                        self.new_axis = vp.norm(Sim.points[1] - Sim.points[0]) * Sim.arrow_length 
+                    #except IndexError:
+                    else:
+                        # apparently arrow reached end of AB direction and is waiting to be recycled
+                        self.new_axis = vp.norm(Sim.points[1] - Sim.points[0]) * Sim.arrow_length
 
                     self.previous_point += 1
                     self.next_point += 1
@@ -173,20 +201,26 @@ class Shadowarrow(vp.arrow):
                 #print(self.next_point, self.previous_point)
                 #if (self.distance_from_next_point + vp.mag(self.axis) / 2) > (
                 #        Sim.distances[self.next_point] - Sim.distances[self.previous_point]):
-                next_to_tip = self.distance_from_next_point - vp.mag(self.fly_direction) * 2
+                next_to_tip = self.distance_from_next_point + vp.mag(self.fly_direction) * 2
                 next_to_tail = self.distance_from_next_point
                 full_length = Sim.distances[self.next_point] - Sim.distances[self.previous_point]
                 if next_to_tail < full_length < next_to_tip:
-                    self.new_axis = vp.norm(
-                        Sim.points[self.previous_point -1] - Sim.points[self.previous_point]) * Sim.arrow_length
+                    if (self.previous_point - 1) >= 0: # not at first point
+                        self.new_axis = vp.norm(
+                            Sim.points[self.previous_point -1] - Sim.points[self.previous_point]) * Sim.arrow_length
+                    else:
+                        pass # do not change new_axis
                 elif next_to_tail > full_length:
                     self.pos = Sim.points[self.previous_point]
                     self.fly_direction = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
 
                     # reached new point, end turning
-                    self.new_axis = vp.norm(
-                        Sim.points[self.previous_point - 1] - Sim.points[self.previous_point]) * Sim.arrow_length
-
+                    if (self.previous_point - 1) >= 0:  # not at first point
+                        self.new_axis = vp.norm(
+                            Sim.points[self.previous_point - 1] - Sim.points[self.previous_point]) * Sim.arrow_length
+                    else:
+                        # apparently reached first waypoint, in BA direction, prepare for recycling
+                        self.new_axis = vp.norm(Sim.points[-2] - Sim.points[-1]) * Sim.arrow_length
                     self.previous_point -= 1
                     self.next_point -= 1
 
