@@ -91,25 +91,35 @@ class Shadowarrow(vp.arrow):
         ##   self.speed = 0
 
         self.flow = Sim.arrow_flow
-        self.fly_direction *= -1
-        self.axis *= -1
+        #self.fly_direction *= -1
+        #self.axis *= -1
         if self.flow: # from A to B
-            if self.next_point is not None:
+            if (self.next_point is not None) and (self.previous_point is not None):
                 self.new_axis = vp.norm(Sim.points[self.next_point]-Sim.points[self.previous_point]) * Sim.arrow_length
-            else:
+            elif self.previous_point is not None:
                 self.new_axis = vp.norm(Sim.points[self.previous_point]-Sim.points[self.previous_point-1]) * Sim.arrow_length
+            else:
+                self.speed = 0
+                self.color = vp.color.yellow
 
         else: # from B to A
-            if self.previous_point is not None:
+            if (self.next_point is not None) and (self.previous_point is not None):
                 self.new_axis = vp.norm(Sim.points[self.previous_point]-Sim.points[self.next_point]) * Sim.arrow_length
-            else:
+            elif self.next_point is not None:
                 self.new_axis = vp.norm(
-                    Sim.points[self.next_point] - Sim.points[self.next_point]+1) * Sim.arrow_length
+                    Sim.points[self.next_point] - Sim.points[self.next_point+1]) * Sim.arrow_length
+            else:
+                self.speed = 0
+                self.color = vp.color.blue
+        # --- both ---
+        self.fly_direction = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
+        self.axis = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
 
 
 
     def update(self):
-
+        if self.flow != Sim.arrow_flow:
+            self.flip_direction()
         self.pos += self.speed * Sim.dt * vp.norm(self.fly_direction)
         # magnitude of a vector is always positive
         if self.previous_point is not None:
@@ -230,7 +240,7 @@ class Shadowarrow(vp.arrow):
 
 
             else: # at end
-                if self.distance_from_next_point > vp.mag(self.axis) :
+                if self.distance_from_next_point > vp.mag(self.axis) /2 :
                     # self.visible = False
                     self.color = vp.color.red
                     # go to waiting
@@ -242,8 +252,8 @@ class Shadowarrow(vp.arrow):
 
 def widget_func_button_flow(b):
     Sim.arrow_flow = not Sim.arrow_flow
-    for a in Sim.blackarrows["AB"]:
-        a.flip_direction()
+    #for a in Sim.blackarrows["AB"]:
+    #    a.flip_direction()
     if Sim.arrow_flow:
         Sim.button_flow.text = "Flow is now: A to B"
     else:
@@ -294,7 +304,7 @@ def create_stuff():
 
 def get_min_distance(nodestring="AB"):
     # get minmial distance from point A to closest Arrow
-    min_distance = Sim.distances[-1]  # maximal possible distance
+    min_distance = Sim.distances[-1]  # maximal possible distance (from Point A to last Waypoint (B))
     for a in Sim.blackarrows[nodestring]:
         if a.flow:  # from A to B
             if a.previous_point is None:
@@ -329,8 +339,8 @@ def main():
                 if len(Sim.blackarrows["AB"]) == 0:
                     Shadowarrow()
                 else:
-                    mindist = get_min_distance("AB")
-                    if mindist > Sim.arrow_length * 2:
+                    mindist = get_min_distance("AB") # shortest distance from an arrow to node A or B
+                    if mindist > Sim.arrow_length * Sim.arrow_spacing:
                         waiting_arrows = [a for a in Sim.blackarrows["AB"] if a.speed == 0]
                         if len(waiting_arrows) == 0:
                             Shadowarrow()
