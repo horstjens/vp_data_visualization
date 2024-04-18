@@ -1,6 +1,6 @@
 import vpython as vp
 
-VERSION = "2a"
+VERSION = "3f"
 
 class Sim:
     running = False
@@ -351,6 +351,7 @@ def main():
                                 a.pos = Sim.points[0]
                                 a.axis = vp.norm(Sim.points[1] - Sim.points[0]) * Sim.arrow_length
                                 a.fly_direction = vp.norm(Sim.points[1]-Sim.points[0]) * Sim.arrow_length
+                                a.color = vp.color.blue
                                 a.previous_point = 0
                                 a.next_point = 1
                             else:
@@ -359,9 +360,11 @@ def main():
                                 a.fly_direction = vp.norm(Sim.points[-2] - Sim.points[-1]) * Sim.arrow_length
                                 a.previous_point = len(Sim.points) -2
                                 a.next_point = len(Sim.points) - 1
+                                a.color = vp.color.yellow
                             a.pos -= a.axis
                             a.visible = True
-                            a.color = vp.color.purple
+                            a.new_axis = vp.vector(a.axis.x, a.axis.y, a.axis.z)
+                            #a.color = vp.color.purple
                             a.speed = Sim.arrow_speed
 
 
