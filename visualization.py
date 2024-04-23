@@ -9,54 +9,12 @@ import vpython as vp  # install with pip install vpython
 import os
 import signal
 
-#import pyproj
 
-VERSION = "0.30.67"
+
+VERSION = "0.33.00"
 
 """
-uae geo 2:
-#min (lat,lon):  23.3691	    46.594261   -> 23,   46
-#max (lat, lon): 25.145999	56.376785   -> 27,   57 
-
-
-min (lat,lon) 23.571263	51.638157 -> 23, 51
-max (lat,lon) 25.910083	56.326511 -> 26, 57
-
-
-
-
-
-data from UAE
-
-3 Asset to be greyed when not in service:  In this example, the circuit from 16 to 17 is switched out at t=1sec and the flow becomes zero.  Can this be greyed rather than showing a flow.
-done
-
-4 Flows: when the flow arrows come to a node they appear to go into the node. Is it possible to make the arrows disappear before they enter the node
-done for arrows to load 
-done for arrows from generator
-done for arrows from node to node
-TODO: do not allow arrow to re-spawn at origin if distance toward next arrow is too short 
-
-5 Flows: when the arrows go round a corner, they can peak out of the tube. Is it possible to make them turn round the corner?
-done (arrow turns when it's middle point crosses the tube's/cables corner point)
-
-6 Preset configurations: I wondered if it would be possible to come up with some preset configurations to view, eg: for each of the Yokoyama configurations?
-done 
-
-7 UAE template setup: Is it possible to setup a UAE template.  I suggest we just include the UAE map as a background and offset the current geolocation data to be over the UAE.
-
-1 Maps: Is it possible to include the map options we discussed, ie: (i) map as it is currently, (ii) simple map and (iii) grid lines only and (iv) no map.  For the simple map, I know that you looked into this previously and couldn't find anything.  I wondered if something as used at TenneT power flow simulator could be included?
-
-2 Heat map on/off:  Currently we have the ability to have the colour coding depending on loading of generators and cables etc.  IS it possible to have an on/off feature so the heat map can be on or off and when it is off we just simply show generators, loads and flows each in a uniform colour.
-done
-
-For UAE map it is the box bounded by 22°32’26.45”N, 51°28’48.53”E & 26°22’22.03”N, 56°34’23.91”E
-
-using simulation_data.csv ( created by clean_csvmaker.py )
-    ( using / used:)
-    clean_geodata.csv
-    clean_cables_mva.csv
-    clean_raw_data.csv
+imlementing the improved ShadowArrows from test_arrow3.py
 
 
 generators (circles in diagram)
@@ -65,7 +23,7 @@ generators (circles in diagram)
 nodes or busbars(small networks)
        get power from generators. send power to other networks. 
        recive power from other networks (negative numbers).
-       send power to consumers
+       send power to consumers (loads)
        > volt
 
 
@@ -74,13 +32,6 @@ cables connect nodes with each powers
 
 loads:
       > p value
-
-color coding:       bad     crit     toler   ok     ok    toler    crit      bad
-Angle	deg	        -180	-170	-160	-150	  150	 160	  170	  180   (gen.) 
-Voltage	pu	        0.9	   0.925	0.95	0.975	1.025	1.05	1.075	    1.1 (nodes)
-Circuits% of MVA 	                                   60	  80	  100	  120   (cables)
-Generators of MVA                                      60	  80	  100	  120   (generators)
-Losses	%	                                            2	   3	    4	    5 (low prio)
 
 loading = % of MVA -> its for color coding the cables (* 100)
 
@@ -96,16 +47,6 @@ reactive power ... Q
 POWER CKT ... is power from Cable  (use only the bigger one)
 Power (without CKT) ... power from Generator
 
-
-see MVA tables: 
-mva_bus.csv
-mva_generator.csv
-
-
-# losses: ? arrows up/down?
-
-WONTFIX: +use different extruded shapes (Star etc.) instead of cylinders 
-TASK: find out shortest distance between subnodes (for arrow lenght), write it down in some wtext at the gui
 """
 
 
@@ -141,18 +82,6 @@ class Data:
         # get latitude, longitude
         lat = df_locations.iloc[line_number]["latitude"]
         lon = df_locations.iloc[line_number]["longitude"]
-        #####lat = df_locations.iloc[line_number]["utm_latitude"]
-        #####lon = df_locations.iloc[line_number]["utm_longitude"]
-        #####zone_number= df_locations.iloc[line_number]["utm_zone_number"]
-        # data is in UTM format, need to be transformed using pyproj
-        # see https://ocefpaf.github.io/python4oceanographers/blog/2013/12/16/utm/
-        # official documentation: https://pyproj4.github.io/pyproj/stable/examples.html
-        # https://proj.org/en/9.4/operations/projections/utm.html
-        # https://proj.org/en/9.4/usage/projections.html
-        # UAE is zone 40
-        ####p = pyproj.Proj(proj="utm", zone=zone_number, ellps='WGS84', preserve_units=False)
-        ####z, x = p(lat,lon,inverse=True)
-        ##node_geo[node_number] = (lat,lon)
         node_geo[node_number]= (lat,lon)
         if df_locations.iloc[line_number]["generator"] == "Yes":
             generators.append(node_number)
@@ -180,9 +109,6 @@ class Data:
     frequency_min = df["frequency"].min()
     frequency_max = df["frequency"].max()
 
-    #print("frequency:", frequency_min, frequency_max)
-
-
     nodes_min = None
     nodes_max = None
 
@@ -191,8 +117,6 @@ class Data:
         ma = df[col_name].max()
         nodes_min = mi if nodes_min is None else min(mi, nodes_min)
         nodes_max = ma if nodes_max is None else max(ma, nodes_max)
-
-
 
     storage_loading_min = None
     storage_loading_max = None
@@ -288,41 +212,6 @@ class Data:
     print("Data calculation finished")
 
 
-
-
-
-    #for i, nn in enumerate(node_numbers):
-    #    node_colors[nn] = (c[0],c[1],c[2])
-    #    c[2] += delta * 3
-    #    if c[2] > 0.9:
-    #        c[2] = 0
-    #        c[1] += delta * 3
-    #        if c[1] > 0.9:
-    #            c[1] = 0
-    #            c[0] += delta *3
-    #            if c[0] > 0.9:
-    #                print("c0 Error", c, i)
-    #    print(i,nn,c)
-    #print("node_colors:", node_colors)
-
-
-    # generator_numbers = [i for i in range(30, 40)]  # numbers from 30 to 39
-
-    # col_name for generator 30 angle: "ANGL 30[30 1.0000]1"
-    # col_name for generator 30 power: "POWR 30[30 1.0000]1"
-    # angle 39 is the reference angle (0)
-
-    # node_numbers = [i for i in range(1, 40)]  # numbers from 1 to 39
-    # cable_col_names = [raw_name for raw_name in df if raw_name.startswith("POWR ") and (" TO " in raw_name)]
-
-    # read mva data from csv
-    # mva_generators = {}
-    # mva_cables = {}
-    # nodes_to_generators = {}
-    # nodes_load_pq = {} # node_number, p, q  # not every node has a load.
-    # geo = {} # geo location. format: node_number : (latitude, longitude, is_generator, is_load),
-
-
 class Sim:
     running = True # mainloop
     axis_x = None
@@ -364,6 +253,9 @@ class Sim:
     # minmax lon: 51, 57
     mapname1 = os.path.join("assets", "map_uae4.jpg")
     mapname2 = os.path.join("assets", "map_uae5.jpg")
+    pietextures = []
+    for p in range(0,101):
+        pietextures.append(os.path.join("assets", f"pie_percent_{p:02}.png"))
     #bounding_box = (-74, 41, -69, 45)
     #bounding_box = (51,22.5,57,26.5)
     # uae geo 2:
@@ -479,8 +371,6 @@ class Sim:
                       height=20,
                       #center=center,
                       background = vp.color.orange)
-
-
 
     needles = []
 
@@ -627,6 +517,204 @@ class Sim:
     arrows_speed = 0.02
     arrows_speed_min = 0.00
     arrows_speed_max = 0.25
+
+
+class Shadowarrow(vp.arrow):
+    """if flow is True:
+            flying from A to B
+            flying from previous_point to next_point
+       if flow is False:
+            flying from B to A
+            flying from next_point to previous_point
+    """
+
+    def __init__(self, nodestring="AB", **kwargs):
+        super().__init__(**kwargs)
+        # print("black arrow created")
+        if nodestring not in Sim.blackarrows:
+            Sim.blackarrows[nodestring] = []
+        Sim.blackarrows[nodestring].append(self)
+        self.nodestring = nodestring
+        self.flow = Sim.arrow_flow
+        self.speed = Sim.arrow_speed
+        self.color = vp.color.black
+        self.shaftwidth = 0.03
+        self.turning = False
+        self.turn_direction = 1
+
+        # get pos from nodestring and flow
+        if self.flow:
+            index = 0  # fly from A to B
+            self.next_point = 1
+            self.previous_point = 0
+            self.axis = vp.norm(Sim.points[1] - Sim.points[0])
+        else:
+            index = -1  # fly from B to A
+            self.next_point = -2
+            self.previous_point = -1
+            self.axis = vp.norm(Sim.points[-2] - Sim.points[-1])
+        self.axis = vp.norm(self.axis) * Sim.arrow_length
+        self.new_axis = vp.vector(self.axis.x, self.axis.y, self.axis.z)
+        self.fly_direction = vp.vector(self.axis.x, self.axis.y, self.axis.z)
+        self.pos = Sim.points[index] - self.axis
+
+    def flip_direction(self):
+        self.flow = Sim.arrow_flow
+        # self.fly_direction *= -1
+        # self.axis *= -1
+        if self.flow:  # from A to B
+            if (self.next_point is not None) and (self.previous_point is not None):
+                self.new_axis = vp.norm(
+                    Sim.points[self.next_point] - Sim.points[self.previous_point]) * Sim.arrow_length
+            elif self.previous_point is not None:
+                self.new_axis = vp.norm(
+                    Sim.points[self.previous_point] - Sim.points[self.previous_point - 1]) * Sim.arrow_length
+            else:
+                self.speed = 0
+                self.color = vp.color.yellow
+
+        else:  # from B to A
+            if (self.next_point is not None) and (self.previous_point is not None):
+                self.new_axis = vp.norm(
+                    Sim.points[self.previous_point] - Sim.points[self.next_point]) * Sim.arrow_length
+            elif self.next_point is not None:
+                self.new_axis = vp.norm(
+                    Sim.points[self.next_point] - Sim.points[self.next_point + 1]) * Sim.arrow_length
+            else:
+                self.speed = 0
+                self.color = vp.color.blue
+        # --- both ---
+        self.fly_direction = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
+        self.axis = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
+
+    def update(self):
+        if self.flow != Sim.arrow_flow:
+            self.flip_direction()
+        self.pos += self.speed * Sim.dt * vp.norm(self.fly_direction)
+        # magnitude of a vector is always positive
+        if self.previous_point is not None:
+            self.distance_from_previous_point = vp.mag(self.pos - Sim.points[self.previous_point])
+        if self.next_point is not None:
+            self.distance_from_next_point = vp.mag(self.pos - Sim.points[self.next_point])
+        # except IndexError:
+        #    print("IndexError", self.previous_point, self.next_point)
+        #    if self.next_point == len(Sim.points):
+        #        self.next_point -= 1
+        # if self.axis != self.fly_direction:
+        #    self.turing = True
+        # else:
+        #    self.turing = False
+        diff_angle = vp.diff_angle(self.fly_direction, self.axis)
+        # print("diff angle, abs", diff_angle, abs(diff_angle))
+        if abs(vp.diff_angle(self.axis, self.new_axis)) > 0.05:
+            self.turning = True
+        else:
+            self.axis = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
+            self.turning = False
+        if self.turning:
+            diff_angle_old = abs(vp.diff_angle(self.axis, self.new_axis))
+            # print("diff_angle:", vp.degrees(diff_angle), self.previous_point, self.next_point)
+            oldpos = self.pos
+            self.rotate(origin=self.pos,
+                        angle=vp.radians(Sim.arrow_turn_speed) * Sim.dt * self.turn_direction,
+                        axis=vp.vector(0, 1, 0))
+            self.pos = oldpos
+            diff_angle_new = abs(vp.diff_angle(self.axis, self.new_axis))
+            if diff_angle_new > diff_angle_old:
+                self.turn_direction *= -1
+
+        if self.flow:
+            # flying from previous point to next point
+            # if self.next_point < len(Sim.points):
+            if self.next_point is not None and self.previous_point is not None:
+                # not at end
+                # if (self.distance_from_previous_point + vp.mag(self.fly_direction) / 2) > (
+                #        Sim.distances[self.next_point] - Sim.distances[self.previous_point]):
+                prev_to_tip = self.distance_from_previous_point + vp.mag(self.fly_direction) * 2
+                prev_to_tail = self.distance_from_previous_point
+                full_length = Sim.distances[self.next_point] - Sim.distances[self.previous_point]
+                if prev_to_tail < full_length < prev_to_tip:
+                    # try: # if self.next_point + 1 == len(Sim.points) -> IndexError
+                    #    self.new_axis = vp.norm(
+                    #        Sim.points[self.next_point + 1] - Sim.points[self.next_point]) * Sim.arrow_length
+                    # except IndexError:
+                    #    pass # do not change new_axis
+                    if (self.next_point + 1) < len(Sim.points):  # no IndexError
+                        self.new_axis = vp.norm(
+                            Sim.points[self.next_point + 1] - Sim.points[self.next_point]) * Sim.arrow_length
+                    else:
+                        pass  # do not change new_axis
+                elif prev_to_tail > full_length:
+                    self.pos = Sim.points[self.next_point]
+                    self.fly_direction = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
+
+                    # reached new point, end turning
+                    if (self.next_point + 1) < len(Sim.points):  # no IndexError
+                        self.new_axis = vp.norm(
+                            Sim.points[self.next_point + 1] - Sim.points[self.next_point]) * Sim.arrow_length
+                    # except IndexError:
+                    else:
+                        # apparently arrow reached end of AB direction and is waiting to be recycled
+                        self.new_axis = vp.norm(Sim.points[1] - Sim.points[0]) * Sim.arrow_length
+
+                    self.previous_point += 1
+                    self.next_point += 1
+
+                    if self.next_point >= len(Sim.points):
+                        self.next_point = None
+
+                    # overshot = self.distance_from_previous_point + vp.mag(self.fly_direction) - (
+                    #    Sim.distances[self.next_point] - Sim.distances[self.previous_point])
+                    # self.pos = Sim.points[self.next_point]
+
+            else:  # at end
+                if self.distance_from_previous_point > vp.mag(self.axis) / 2:
+                    # if self.distance_from_next_point < vp.mag
+                    # self.visible = False
+                    self.color = vp.color.red
+                    # go to waiting
+                    self.speed = 0
+        elif not self.flow:
+            # flying from next point to previous point
+            # if self.previous_point >= 0:
+            if self.previous_point is not None and self.next_point is not None:
+                # not at end
+                # print(self.next_point, self.previous_point)
+                # if (self.distance_from_next_point + vp.mag(self.axis) / 2) > (
+                #        Sim.distances[self.next_point] - Sim.distances[self.previous_point]):
+                next_to_tip = self.distance_from_next_point + vp.mag(self.fly_direction) * 2
+                next_to_tail = self.distance_from_next_point
+                full_length = Sim.distances[self.next_point] - Sim.distances[self.previous_point]
+                if next_to_tail < full_length < next_to_tip:
+                    if (self.previous_point - 1) >= 0:  # not at first point
+                        self.new_axis = vp.norm(
+                            Sim.points[self.previous_point - 1] - Sim.points[self.previous_point]) * Sim.arrow_length
+                    else:
+                        pass  # do not change new_axis
+                elif next_to_tail > full_length:
+                    self.pos = Sim.points[self.previous_point]
+                    self.fly_direction = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
+
+                    # reached new point, end turning
+                    if (self.previous_point - 1) >= 0:  # not at first point
+                        self.new_axis = vp.norm(
+                            Sim.points[self.previous_point - 1] - Sim.points[self.previous_point]) * Sim.arrow_length
+                    else:
+                        # apparently reached first waypoint, in BA direction, prepare for recycling
+                        self.new_axis = vp.norm(Sim.points[-2] - Sim.points[-1]) * Sim.arrow_length
+                    self.previous_point -= 1
+                    self.next_point -= 1
+
+                    if self.previous_point < 0:
+                        self.previous_point = None
+            else:  # at end
+                if self.distance_from_next_point > vp.mag(self.axis) / 2:
+                    # self.visible = False
+                    self.color = vp.color.red
+                    # go to waiting
+                    self.speed = 0
+
+
 
 
 class FlyingArrowToLoad(vp.arrow):
@@ -2382,18 +2470,26 @@ def widget_func_start_simulation(b):
                                                  opacity=Sim.tubes_opacity)
 
     # create little pie charts for loading at each cable "middle" disc
-    Sim.pie_points = [] # curve points for pie chart from 0 to 100 % , 100 points, starting at right, moving counter-clock-wise
-    for i in vp.arange(0, -vp.pi*2, -vp.pi*2/100):
-        Sim.pie_points.append(vp.vec(vp.cos(i) * Sim.base["middles_r"] * 1.05,
-                                     0,
-                                     vp.sin(i) * Sim.base["middles_r"] * 1.05,
-                                     ))
+    #Sim.pie_points = [] # curve points for pie chart from 0 to 100 % , 100 points, starting at right, moving counter-clock-wise
+    #for i in vp.arange(0, -vp.pi*2, -vp.pi*2/100):
+    #    Sim.pie_points.append(vp.vec(vp.cos(i) * Sim.base["middles_r"] * 1.05,
+    #                                 0,
+    #                                 vp.sin(i) * Sim.base["middles_r"] * 1.05,
+    #                                 ))
+
     print("middles:")
     for (i,j), disc in Sim.cables_middle.items():
         loading = Data.df[f"cable_loading_{i}_{j}"][Sim.i] # value from 0 to 100 ? (is percent?)
+        loading_t = int(min(100, loading)) # restrict pie chart to 100, get value for texture
         #print(i,j, disc, loading)
-        points = [v + disc.pos + vp.vec(0, disc.axis.y,0) for v in Sim.pie_points]
-        Sim.pie_charts[(i,j)] = vp.curve(pos = points, color=vp.color.green, radius=Sim.base["middles_r"] * 0.4 )
+        #points = [v + disc.pos + vp.vec(0, disc.axis.y,0) for v in Sim.pie_points]
+        #Sim.pie_charts[(i,j)] = vp.curve(pos = points, color=vp.color.green, radius=Sim.base["middles_r"] * 0.4 )
+        Sim.pie_charts[(i,j)] = vp.box(pos=disc.pos + vp.vector(0, disc.axis.y, 0),
+                                       size=vp.vector(Sim.base["middles_r"]*2, Sim.base["middles_r"]/10, Sim.base["middles_r"]*2),
+                                       texture=Sim.pietextures[loading_t])
+
+
+
 
 
         #Sim.pie_charts[(i,j)] = vp.extrusion()
@@ -5403,15 +5499,16 @@ def update_stuff():
 
                 # update pie chart
                 disc = Sim.cables_middle[(number, target)]
-                points = [v + disc.pos + vp.vec(0, disc.axis.y, 0) for v in Sim.pie_points]
-                l = int(loading)
-                pie_curve = Sim.pie_charts[(number, target)]
-                if pie_curve.npoints != l:
-                    # make new points
-                    pie_curve.clear()
-                    #pie_curve.unshift(points[:l])
-                    for v in points[:l]:
-                        pie_curve.append(v)
+                #points = [v + disc.pos + vp.vec(0, disc.axis.y, 0) for v in Sim.pie_points]
+                l = int(min(loading,100))
+                pie_box = Sim.pie_charts[(number, target)]
+                pie_box.texture = Sim.pietextures[l]
+                #if pie_curve.npoints != l:
+                ##    # make new points
+                #    pie_curve.clear()
+                #    #pie_curve.unshift(points[:l])
+                #    for v in points[:l]:
+                #        pie_curve.append(v)
                     #pie_curve.append(points[:l])
                     #pie_curve.pos = points[:l]
                     #pie_curve.unshift(0,points[:l])
