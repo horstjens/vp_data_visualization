@@ -1,7 +1,7 @@
 import vpython as vp
 import os.path
 
-VERSION = "4b"
+VERSION = "4c"
 
 class Sim:
     start_turning_distance1 = 2
@@ -510,6 +510,13 @@ class Shadowarrow2(vp.arrow):
         # if (self.distance_from_previous_point + vp.mag(self.axis)/2) > (Sim)
 
 
+#class TrailingBall(vp.sphere):
+#    def __init__(self, **kwargs):
+#        super().__init__(**kwargs)
+
+
+
+
 class Shadowball(vp.sphere):
     """if flow is True:
             flying from A to B
@@ -519,6 +526,7 @@ class Shadowball(vp.sphere):
             flying from next_point to previous_point
 
     """
+    #number = 0
 
     def __init__(self, nodestring="AB", **kwargs):
         super().__init__(**kwargs)
@@ -526,6 +534,8 @@ class Shadowball(vp.sphere):
         if nodestring not in Sim.blackarrows:
             Sim.blackarrows[nodestring] = []
         Sim.blackarrows[nodestring].append(self)
+        #self.number = Shadowball.number
+        #Shadowball.number += 1
         self.nodestring = nodestring
         self.flow = Sim.arrow_flow
         self.speed = Sim.arrow_speed
@@ -534,6 +544,7 @@ class Shadowball(vp.sphere):
         self.turning = False
         self.turn_direction = 1
         self.radius = Sim.shadowballradius
+
 
         # get pos from nodestring and flow
         if self.flow:
@@ -550,27 +561,14 @@ class Shadowball(vp.sphere):
         self.new_axis = vp.vector(self.axis.x, self.axis.y, self.axis.z)
         self.fly_direction = vp.vector(self.axis.x, self.axis.y, self.axis.z)
         self.pos = Sim.points[self.nodestring][index] - self.axis
+        self.children = [vp.sphere(pos=self.pos, radius=self.radius * 0.8, opacity = 0.9, color=vp.vector(0.3,0.3,0.3)),
+                         vp.sphere(pos=self.pos, radius=self.radius * 0.6, opacity = 0.6, color=vp.vector(0.6,0.6,0.6)),
+                         vp.sphere(pos=self.pos, radius=self.radius * 0.4, opacity = 0.3, color=vp.vector(0.9,0.9,0.9)),
+                         ]
+        self.oldpositions = []
+        #    Trailingball(self.number, self.pos, self.radius,)
 
     def flip_direction(self):
-        # if not self.turning:
-        #    middle = self.pos + self.axis / 2
-        #    self.axis = -self.axis
-        #    self.pos = middle - self.axis / 2
-        # else:
-        # middle = self.pos + self.fly_direction / 2
-        # self.axis = -self.axis
-        # self.pos = middle - self.fly_direction / 2
-        # self.fly_direction = -self.fly_direction
-        # self.flow = Sim.arrow_flow
-        # remove arrows with a None..
-        # if (self.next_point is None) or (self.previous_point is None):
-        #    self.color = vp.color.orange
-        #    self.speed = 0
-        # ------- new code --------
-        ##if (self.next_point is None) or (self.previous_point is None):
-        ##    self.color = vp.color.orange
-        ##   self.speed = 0
-
         self.flow = Sim.arrow_flow
         # self.fly_direction *= -1
         # self.axis *= -1
@@ -601,6 +599,9 @@ class Shadowball(vp.sphere):
         self.axis = vp.vector(self.new_axis.x, self.new_axis.y, self.new_axis.z)
 
     def update(self):
+        if (len(self.oldpositions) == 0) or (self.pos != self.oldpositions[0]):
+                self.oldpositions.insert(0, vp.vector(self.pos.x, self.pos.y, self.pos.z))
+        print(len(self.oldpositions), self.oldpositions)
         if self.flow != Sim.arrow_flow:
             self.flip_direction()
         self.pos += self.speed * Sim.dt * vp.norm(self.fly_direction)
@@ -730,16 +731,18 @@ class Shadowball(vp.sphere):
 
                     if self.previous_point < 0:
                         self.previous_point = None
-
-
-
             else:  # at end
                 if self.distance_from_next_point > vp.mag(self.axis) / 2:
                     # self.visible = False
                     self.color = vp.color.red
                     # go to waiting
                     self.speed = 0
-
+        # ----- children ---
+        if len(self.oldpositions) > 91:
+            self.oldpositions = self.oldpositions[:91]
+        #if len(self.oldpositions) == 31:
+            for i in range(3):
+                self.children[i].pos = self.oldpositions[i*30]
         # if self.next_point > 0:
         # if (self.distance_from_previous_point + vp.mag(self.axis)/2) > (Sim)
 
@@ -1124,14 +1127,20 @@ def main():
                                 a = waiting_arrows[0]
                                 if a.flow:
                                     a.pos = Sim.points[nodestring][0]
-                                    a.axis = vp.norm(Sim.points[nodestring][1] - Sim.points[nodestring][0]) * Sim.arrow_length
+                                    try:
+                                        a.axis = vp.norm(Sim.points[nodestring][1] - Sim.points[nodestring][0]) * Sim.arrow_length
+                                    except AttributeError:
+                                        pass
                                     a.fly_direction = vp.norm(Sim.points[nodestring][1]-Sim.points[nodestring][0]) * Sim.arrow_length
                                     a.color = vp.color.blue
                                     a.previous_point = 0
                                     a.next_point = 1
                                 else:
                                     a.pos = Sim.points[nodestring][-1]
-                                    a.axis = vp.norm(Sim.points[nodestring][-2] - Sim.points[nodestring][-1]) * Sim.arrow_length
+                                    try:
+                                        a.axis = vp.norm(Sim.points[nodestring][-2] - Sim.points[nodestring][-1]) * Sim.arrow_length
+                                    except AttributeError:
+                                        pass
                                     a.fly_direction = vp.norm(Sim.points[nodestring][-2] - Sim.points[nodestring][-1]) * Sim.arrow_length
                                     a.previous_point = len(Sim.points[nodestring]) -2
                                     a.next_point = len(Sim.points[nodestring]) - 1
