@@ -341,7 +341,7 @@ class Sim:
         background=vp.color.gray(0.8),
         title="Load Power",
         xtitle="time (s)",
-        ytitle="?",
+        ytitle="MW",
         align="left",
         fast=False,
     )
@@ -378,7 +378,7 @@ class Sim:
         background=vp.color.gray(0.75),
         title="Generator Power",
         xtitle="time (s)",
-        ytitle="?",
+        ytitle="MW",
         align="left",
         fast=False,
     )
@@ -396,7 +396,7 @@ class Sim:
         background=vp.color.gray(0.65),
         title="Generator Loading",
         xtitle="time (s)",
-        ytitle="?",
+        ytitle="%",
         align="left",
         fast=False,
     )
@@ -415,7 +415,7 @@ class Sim:
         background=vp.color.gray(0.6),
         title="Storage Power",
         xtitle="time (s)",
-        ytitle="?",
+        ytitle="MW",
         align="left",
         fast=False,
     )
@@ -434,7 +434,7 @@ class Sim:
         background=vp.color.gray(0.55),
         title="Cable Loading",
         xtitle="time (s)",
-        ytitle="?",
+        ytitle="%",
         align="left",
         fast=False,
     )
@@ -451,7 +451,7 @@ class Sim:
         background=vp.color.gray(0.5),
         title="Cable Power",
         xtitle="time (s)",
-        ytitle="?",
+        ytitle="MW",
         align="left",
         fast=False,
     )
@@ -468,7 +468,7 @@ class Sim:
         background=vp.color.gray(0.45),
         title="Storage Loading",
         xtitle="time (s)",
-        ytitle="?",
+        ytitle="%",
         align="left",
         fast=False,
     )
