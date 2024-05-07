@@ -11,7 +11,7 @@ import signal
 
 
 
-VERSION = "0.34.00"
+VERSION = "0.34.a"
 
 """
 generators (circles in diagram)
@@ -207,6 +207,10 @@ class Data:
     time_col_name = "time"
     # print(generators_power_max, generators_power_min)
     print("Data calculation finished")
+    print("cables power min - max:", cables_power_min, cables_power_max)
+    print("generators power min - max:", generators_power_min, generators_power_max)
+    print("loads power min - max:", loads_min, loads_max)
+    print("storage power min - max:", storage_power_min, storage_power_max )
 
 
 class Sim:
@@ -281,9 +285,23 @@ class Sim:
                       )
 
     # wheels
-    scene_dia0 = vp.canvas(#title="needle diagrams",
-                       width=dia_width,
+    scene_dia_needle_frequency = vp.canvas(
+                       #title="network frequency",
+                       #width=dia_width,
                        #height=canvas_height,
+                       width=dia_height * 1.25,
+                       height=dia_height,
+                       center=vp.vector(0, 0, 0),
+                       background=vp.color.gray(0.99),
+                       #align="right",
+                       align="left"
+                       )
+
+    scene_dia_needle_angle = vp.canvas(
+                       #title="generator angle",
+                       #width=dia_width,
+                       #height=canvas_height,
+                       width=dia_height * 1.25,
                        height=dia_height,
                        center=vp.vector(0, 0, 0),
                        background=vp.color.gray(0.99),
@@ -497,7 +515,8 @@ class Sim:
                       #center=center,
                       background = vp.color.orange)
 
-    needles = []
+    needle_frequency = None # for network frequency
+    needles = {}            # for generator angles
 
     number_of_sub_cables = 2  # should be an even number, because sub-nodes = sub_cables -1. and we need a "middle" subnode
     fps = 60
@@ -957,6 +976,85 @@ class FlyingArrowFromGenerator(vp.arrow):
             self.pos = vp.vector(new_pos.x, y, new_pos.z)
         # update shadow
         Sim.shadows[self.number].pos = vp.vector(new_pos.x, 0, new_pos.z)
+
+
+class FlyingDisc(vp.cylinder):
+    """disc-formed shadow of a flying ball,
+    traveling on the groud between nodes, subnodes,
+    generators, loads, storages etc.
+    highest power value is maximum speed (100%)
+    traveling speed is local power value in relation to the maximum speed
+    boss can be cable, generator, storage, load
+    """
+    container = []
+    distances = {} # {boss_string, [i_number,j_number]}
+
+
+    def __init__(self, boss, power, **kwargs):
+        self.boss = boss
+        self.power = power
+        super().__init__(**kwargs)
+        # boss is actually the name of the df column, like 'storage_power_1'
+        # power = Data.df[f"storage_power_{number}"][Sim.i]
+        FlyingDisc.container.append(self)
+        if self.boss.startswith("storage_power"):
+            #print(self.boss, self.boss.split("_"))
+            self.i = int(self.boss.split("_")[-1])
+            self.j = int(self.boss.split("_")[-1]) # the same
+            self.pointlist = [Sim.nodes[self.i].pos, Sim.storages[self.i].pos]
+            self.length_list = [0, vp.mag(self.pointlist[0]-self.pointlist[1])]
+            # start where ? depending if storage power is positive (start at node), fly_direction = 1 or negative (start at storage, fly_direction = -1
+            #self.power = Data.df[f"storage_power_{self.i}"][Sim.i]
+            #self.speed_percent =
+            if self.power > 0:
+                self.fly_direction = 1
+                self.pos = self.pointlist[0]
+                self.target = self.pointlist[1]
+                if self.boss not in FlyingDisc.distances:
+                    FlyingDisc.distances[self.boss] = [0, self.length_list[1]]
+                else:
+                    FlyingDisc.distances[self.boss][0] = 0
+            else:
+                self.fly_direction = -1
+                self.pos = self.pointlist[-1]
+                self.target = self.pointlist[0]
+                if self.boss not in FlyingDisc.distances:
+                    FlyingDisc.distances[self.boss] = [self.length_list[1], 0]
+                else:
+                    FlyingDisc.distances[self.boss][1] = 0
+        self.radius = Sim.base["flying_arrows_length"]
+        self.axis = vp.vector(0,0.001,0)
+        self.color = vp.color.green
+        self.opacity = 0.5
+        self.speed = 0
+
+    def update(self, power):
+        if power == 0:
+            self.color = vp.color.yellow
+            return
+        #else:
+        self.color = vp.color.green
+        # speed calculation
+        speedpercent = abs(self.power / Data.power_max)
+        print(speedpercent)
+        speed = speedpercent * Sim.arrows_speed_max
+        # new pow
+        if self.power > 0:
+            direction = vp.norm(self.pointlist[1] - self.pointlist[0])
+        else:
+            direction = vp.norm(self.pointlist[0] - self.pointlist[1])
+        self.pos += direction * speed * Sim.dt
+        #print("new pos:", self.pos)
+        dist_i = vp.mag(self.pos - self.pointlist[0])
+        dist_j = vp.mag(self.pos - self.pointlist[1])
+        if dist_i < FlyingDisc.distances[self.boss][0]:
+            FlyingDisc.distances[self.boss][0] = dist_i
+        if dist_j < FlyingDisc.distances[self.boss][-1]:
+            FlyingDisc.distances[self.boss][-1] = dist_j
+
+
+
+
 
 
 class FlyingArrow(vp.arrow):
@@ -4574,26 +4672,43 @@ def create_stuff2_curves():
 
 
 def create_stuff2():
-    #dia_width = 250     # for the 12 little diagrams on the right side
+    """create stuff (tachometer needles) inside canvas for network frequency and inside canvas for generator angles """
+    Sim.scene_dia_needle_frequency.select()
 
-    #dia_height = 125    # for the 12 little diagrams on the right side
-    # ----- frequence tachometer 200 x ? -------- first row, left
-    Sim.scene_dia0.select()
-    #g = 1
-    for g, x in enumerate((0,70)):
-        vp.cylinder(pos=vp.vector(x,0,0),radius=30, axis=vp.vector(0,0,1))
-        Sim.needles.append(vp.arrow(pos=vp.vector(x,0,0), axis=vp.vector(0,25,0), color=vp.vector(0.25+ g*0.2,0,1)))
-        if x == 0:
-            vp.label(pos=vp.vector(Sim.dia_width/2,Sim.dia_height/4,0), pixel_pos=True, text=f"network frequency", align="center",
-                     box=False,height=35, opacity=0, color=vp.color.orange)
-            Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-12,0), text="50 Hz", color=vp.color.black, height=48,
-                                             box=False, opacity=0)
-            #Sim.gui["time_text"] = vp.label(pos=vp.vector(0, -25,0), text="time: 0 sec", color=vp.vector(0,0.5,0), height=25,
-            #                                box=False, opacity=0, align="center")
-            vp.label(pos=vp.vector(0,28,0), text="50.0", align="center", box=False, opacity=0, color=vp.color.black)
-            vp.label(pos=vp.vector(-27,0,0), text="49.9", align="right", box=False, opacity=0, color=vp.color.black)
-            vp.label(pos=vp.vector(27,0,0), text="50.1", align="left", box=False, opacity=0, color=vp.color.black)
-        #g += 1
+    x= 0
+    vp.cylinder(pos=vp.vector(x,0,0),radius=30, axis=vp.vector(0,0,1))
+    Sim.gui["frequency_text"] = vp.label(pos=vp.vector(0,-10,0), text="50 Hz", color=vp.color.black, height=36,
+                                     box=False, opacity=0)
+    ##Sim.gui["time_text"] = vp.label(pos=vp.vector(0, -25,0), text="time: 0 sec", color=vp.vector(0,0.5,0), height=25,
+    ##                                box=False, opacity=0, align="center")
+    vp.label(pos=vp.vector(0,28,0), text="50.0", align="center", box=False, opacity=0, color=vp.color.black)
+    vp.label(pos=vp.vector(-27,0,0), text="49.9", align="right", box=False, opacity=0, color=vp.color.black)
+    vp.label(pos=vp.vector(27,0,0), text="50.1", align="left", box=False, opacity=0, color=vp.color.black)
+    vp.label(pixel_pos=True, pos=vp.vector(Sim.dia_height*1.2 /2,10,0), align="center", box=False, text="network frequency", color=vp.color.black)
+
+    Sim.needle_frequency = vp.arrow(pos=vp.vector(x,0,0), axis=vp.vector(0,25,0), color=vp.vector(0.25+ 0.2,0,1))
+
+    # ----------- generator angles ------
+    Sim.scene_dia_needle_angle.select()
+    vp.cylinder(pos=vp.vector(x, 0, 0), radius=30, axis=vp.vector(0, 0, 1))
+    vp.label(pixel_pos=True, pos=vp.vector(10, 10, 0), align="left", box=False,
+             text="Gen. angles", color=vp.color.black)
+    vp.label(pos=vp.vector(0, 28, 0), text="90°", align="center", box=False, opacity=0, color=vp.color.black)
+    vp.label(pos=vp.vector(-27, 0, 0), text="180°", align="right", box=False, opacity=0, color=vp.color.black)
+    vp.label(pos=vp.vector(28, 0, 0), text="0°", align="left", box=False, opacity=0, color=vp.color.black)
+    vp.label(pos=vp.vector(0, -28, 0), text="-90°", align="center", box=False, opacity=0, color=vp.color.black)
+
+    Sim.needles = {}
+    for col_name in [name for name in Data.col_names if name.startswith("generator_angle_")]:
+        node_number = int(col_name.split("_")[-1])
+        Sim.needles[node_number] = vp.arrow(pos=vp.vector(0, 0, 0), axis=vp.vector(25, 0, 0), color=Sim.legend_nodes[node_number])
+
+
+    ##for number, cyl in Sim.generators.items():
+    ##    Sim.needles[number] = vp.arrow(pos=vp.vector(0, 0,0), axis=vp.vector(25,0,0), color=vp.color.black)
+
+
+#g += 1
 
     # ------ frequency-xy diagram (400x250) -> 200 x 100 --------------- 1st row, right
 
@@ -5427,23 +5542,36 @@ def update_stuff():
     # ---- frequency
     f = Data.df["frequency"][Sim.i]
     sec = Data.df["time"][Sim.i]
-    Sim.scene_dia0.select()
+    Sim.scene_dia_needle_frequency.select()
     Sim.gui["frequency_text"].text = f"{f:.2f} Hz"
     #Sim.gui["time_text"].text = f"time: {sec:.2f} sec"
     # 50 hz...needle points north.
     # 49.9 ...neelde points west
     # 50.1 ...needle points east
     delta = f-50
-    needle = Sim.needles[0]
+    needle = Sim.needle_frequency
     needle.axis = vp.vector(0, 25, 0)
     if delta != 0:
         degree = 90 * delta/0.1
         needle.rotate(axis=vp.vector(0,0,-1), origin=vp.vector(0,0,0), angle=vp.radians(degree))
+
+
+
+    Sim.scene_dia_needle_angle.select()
+    radius = 30
+    for number, cyl in Sim.generators.items():
+        g_angle = Data.df[f"generator_angle_{number}"][Sim.i]
+        ##print("gen number, angle:", number, g_angle)
+        needle = Sim.needles[number]
+        needle.axis = vp.vector(0,radius,0)  # point to right (0°)
+        needle.rotate(axis=vp.vector(0,0,1), angle=vp.radians(-g_angle))
+
+
     # dia1 time indicator (green vertical curve), x=0..200
 
-    minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    x = x * 200
+    #minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
+    #x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
+    #x = x * 200
 
 
     # for green_vertical_bar in (#Sim.time_indicator_dia1,
@@ -5474,7 +5602,7 @@ def update_stuff():
             loading = Data.df[f"storage_loading_{number}"][Sim.i]
             power = Data.df[f"storage_power_{number}"][Sim.i]
             state = Data.df[f"storage_state_{number}"][Sim.i]
-            print(number, ":", loading, power, state)
+            #print(number, ":", loading, power, state)
         except KeyError:
             continue
         if number in Sim.tubes_storage:
@@ -5801,6 +5929,33 @@ def update_stuff():
     return  # TODO code here
 
 
+def flying_discs():
+    # storage?
+    for i, cyl in Sim.storages.items():
+        name = f"storage_power_{i}"
+        try:
+            power = cyl.power
+        except AttributeError:
+            continue # cylinder object has no power value yet (waiting for udpate_stuff or "play" button)
+        if power != 0:
+            if name not in FlyingDisc.container:
+                FlyingDisc(name, power)
+            else:
+                # distance big enough for new arrow?
+                distance_i, distance_j = FlyingDisc.distances[name]
+                if power > 0:
+                    if distance_i > Sim.base["flying_arrows_distance"]:
+                        FlyingDisc(name, power)
+                elif power < 0:
+                    if distance_j > Sim.base["flying_arrows_distance"]:
+                        FlyingDisc(name, power)
+        for fd in [f for f in FlyingDisc.container if f.boss == name]:
+            fd.update(power)
+
+
+
+
+
 def flying_arrows():
     # flying arrows
     for (i, j), arrowlist in Sim.arrows.items():
@@ -5818,9 +5973,13 @@ def main():
     Sim.scene.bind("mousemove", mouse_move)
     Sim.scene.bind("mouseup", mousebutton_up)
 
-    Sim.scene_dia0.userzoom = False
-    Sim.scene_dia0.userspin = False
-    Sim.scene_dia0.userpan = False
+    Sim.scene_dia_needle_frequency.userzoom = False
+    Sim.scene_dia_needle_frequency.userspin = False
+    Sim.scene_dia_needle_frequency.userpan = False
+
+    Sim.scene_dia_needle_angle.userzoom = False
+    Sim.scene_dia_needle_angle.userspin = False
+    Sim.scene_dia_needle_angle.userpan = False
 
     #Sim.scene_dia1.userspin = False
 
@@ -5849,7 +6008,7 @@ def main():
                 flying_arrows()
 
             continue
-
+        flying_discs()
         flying_arrows()
         if time_since_framechange > Sim.frame_duration:
             time_since_framechange = 0
