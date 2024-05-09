@@ -11,7 +11,7 @@ import signal
 
 
 
-VERSION = "0.34.a"
+VERSION = "0.34.b"
 
 """
 generators (circles in diagram)
@@ -1494,6 +1494,19 @@ def widget_func_end(b):
     Sim.gui["label_frame"].text = f"{Sim.i}/{len(Data.df)} time: {Data.df['time'][Sim.i]}"
 
 
+def widget_func_pie_charts_visible(b):
+    """checkbox """
+    for (i,j), piebox in Sim.pie_charts.items():
+        piebox.visible = b.checked
+
+def widget_func_pie_chart_text(b):
+    print("choice is now:", b.selected)
+
+def widget_func_pie_chart_size(b):
+    """winput"""
+    for (i,j), piebox in Sim.pie_charts.items():
+        piebox.size = vp.vector(b.number, 0.001, b.number)
+
 def widget_func_play(b):
     # print("play button was pressed", b.text)
     if "play" in b.text.lower():
@@ -1839,6 +1852,9 @@ def widget_func_toggle_cable_labels(b):
         update_stuff()
     elif b.index == 3:
         Sim.label_cable = "p+loading"
+        update_stuff()
+    elif b.index == 4:
+        Sim.label_cable = "mva"
         update_stuff()
     for name, value in Sim.labels.items():
         if name.startswith("cable"):
@@ -3661,7 +3677,7 @@ def create_widgets():
     #Sim.gui["box_cables_labels"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> | </code>", checked=False,
     #                                           bind=widget_func_toggle_cable_labels)
     Sim.gui["menu_cables_labels"] = vp.menu(pos=Sim.scene3.caption_anchor,
-                                            choices=["none", "p", "loading", "p + loading"],
+                                            choices=["none", "p", "loading", "p + loading", "mva"],
                                             bind=widget_func_toggle_cable_labels,
                                             index=0,)
     Sim.scene3.append_to_caption("<code> | </code>")
@@ -3884,7 +3900,30 @@ def create_widgets():
                                                value=f"{Sim.tubes_opacity}", length=300)
 
     Sim.scene3.append_to_caption("\n")
-
+    # pie charts
+    Sim.scene3.append_to_caption("Pie charts: visible: ")
+    Sim.gui["pie_charts_visible"] = vp.checkbox(pos=Sim.scene3.caption_anchor,
+                                                bind=widget_func_pie_charts_visible,
+                                                checked=True,
+                                                #text="visible"
+                                                )
+    Sim.scene3.append_to_caption(" size: ")
+    Sim.gui["pie_charts_size"] = vp.winput(pos=Sim.scene3.caption_anchor,
+                                           type="numeric",
+                                           text=str(Sim.base["middles_r"]*2),
+                                           bind=widget_func_pie_chart_size,
+                                           )
+    #Sim.scene3.append_to_caption(" text: ")
+    #Sim.gui["pie_charts_text"] = vp.menu(pos=Sim.scene3.caption_anchor,
+    #                                     bind=widget_func_pie_chart_text,
+    #                                     choices = ["no label",
+    #                                                "P",
+    #                                                "MVA",
+    #                                                "% loading",
+    #                                                ],
+    #                                     selected="no label",
+    #                                     )
+    Sim.scene3.append_to_caption("\n")
     # ------------------------
     # ---- widgets below window in caption area --------------
     t = "<code>entinity:    |    unit       |" \
@@ -5792,7 +5831,8 @@ def update_stuff():
             #    continue
             # loss = abs(power1 + power2)
             # TODO: mva calculation
-            #
+
+
             # if (number, target) in Data.mva_cables:
             #    mva_rating = Data.mva_cables[(number, target)]
             # elif (target,number) in Data.mva_cables:
@@ -5800,6 +5840,12 @@ def update_stuff():
             # else:
             #    print("could not find mva_rating (cables) for", number, target)
             #    continue
+
+            try:
+                mva = Data.df_locations.iloc[number-1][f"to_{target}"]
+            except IndexError:
+                mva = 0
+
             power = Data.df[f"cable_power_{number}_{target}"][Sim.i]
             Sim.cablepower[(number, target)] = power  # for speed of floating arrow
             loss = Data.df[f"cable_loss_{number}_{target}"][Sim.i]
@@ -5834,6 +5880,7 @@ def update_stuff():
             # print(f"loading calc. for cable {number} {target}: p={power} q=0 mva_rating={mva_rating} loading =  {loading}")
             # mva: {(1, 2): 600, (1, 39): 1000, (2, 3): 500, (2, 25): 500, (2, 30): 900, (3, 4): 500, (3, 18): 500, (4, 5): 600, (4, 14): 500, (5, 6): 1200, (5, 8): 900, (6, 7): 900, (6, 11): 480, (6, 31): 1800, (7, 8): 900, (8, 9): 900, (9, 39): 900, (10, 11): 600, (10, 13): 600, (10, 32): 900, (12, 11): 500, (12, 13): 500, (13, 14): 600, (14, 15): 600, (15, 16): 600, (16, 17): 600, (16, 19): 600, (16, 21): 600, (16, 24): 600, (17, 18): 600, (17, 27): 600, (19, 20): 900, (19, 33): 900, (20, 34): 900, (21, 22): 900, (22, 23): 600, (22, 35): 900, (23, 24): 600, (23, 36): 900, (25, 26): 600, (25, 37): 900, (26, 27): 600, (26, 28): 600, (26, 29): 600, (28, 29): 600, (29, 38): 1200}
 
+
             if f"cable {number}-{target}" in Sim.labels:
                 # print(f"updating cable {number} {target}..")
                 if Sim.label_cable == "p":
@@ -5845,6 +5892,9 @@ def update_stuff():
                 elif Sim.label_cable == "p+loading":
                     ff = "p: {" + f":.{Sim.decimals_cable}f" + "}" + " loading: {" + f":.{Sim.decimals_cable}f" + "}"
                     text = ff.format(power, loading)
+                elif Sim.label_cable == "mva":
+                    ff = "mva: {" + f":.{Sim.decimals_cable}f" + "}"
+                    text = ff.format(mva)
 
                 #Sim.labels[
                 #    f"cable {number}-{target}"].text = f"power: {power:.2f} loss: {loss:.2f} loading: {loading:.2f} flow:{flow}"
@@ -5856,29 +5906,7 @@ def update_stuff():
                 l = int(min(loading,100))
                 pie_box = Sim.pie_charts[(number, target)]
                 pie_box.texture = Sim.pietextures[l]
-                #if pie_curve.npoints != l:
-                ##    # make new points
-                #    pie_curve.clear()
-                #    #pie_curve.unshift(points[:l])
-                #    for v in points[:l]:
-                #        pie_curve.append(v)
-                    #pie_curve.append(points[:l])
-                    #pie_curve.pos = points[:l]
-                    #pie_curve.unshift(0,points[:l])
-                    #for _ in range(l, pie_curve.npoints):
-                    #    pie_curve.pop(-1)
-                    # too many points
-                    #if pie_curve.npoints > l:
-                    #    for n in range(l, pie_curve.npoints+1):
-                    #        pie_curve.pop(n)
-                    # not enough points
-                    #elif pie_curve.npoints < l:
-                        #for n in range(pie_curve.npoints, l):
-                        # slice: startpoint, howmany, pointlist
-                    #    pie_curve.splice(pie_curve.npoints, l-pie_curve.npoints, points[pie_curve.npoints:])
-                    #for n in range(pie_curve.npoints):
-                    #    pie_curve.
-                #Sim.pie_charts[(i, j)] = vp.curve(pos=points, color=vp.color.green, radius=Sim.base["middles_r"] * 0.4)
+
 
 
                 so = Sim.selected_object
@@ -5998,6 +6026,17 @@ def main():
         Sim.gui["cursor"].text = f"long: {Sim.scene.mouse.pos.x:.2f}, lat: {geo_to_local(Sim.scene.mouse.pos.z):.2f}"
         Sim.gui[
             "camera"].text = f"camera: {Sim.scene.camera.pos} axis: {Sim.scene.forward} center: {Sim.scene.center} range: {Sim.scene.range:.2f} fov: {Sim.scene.fov:.2f}"
+
+        # ----- move camera with wasd keys?
+        #pressed_keys = vp.keysdown()
+        #if "w" in pressed_keys:
+        #    Sim.scene.select()
+        #    Sim.scene.center.z += 0.1
+        #    Sim.scene.camera.pos.z += 0.1
+
+        #    print("w pressed")
+        #    #print("camera pos, scene center:", Sim.scene.camera.pos, Sim.scene.center)
+        # ----------
         # print("simtime", simtime)
         # Sim.status.text = f"mouse: {Sim.scene.mouse.pos} discs: "
         # Sim.status2.text = f"selected obj: {Sim.selected_object}, drag: {Sim.dragging},"
