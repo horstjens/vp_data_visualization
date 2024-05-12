@@ -11,7 +11,7 @@ import signal
 
 
 
-VERSION = "0.34.b"
+VERSION = "0.34.c"
 
 """
 generators (circles in diagram)
@@ -1321,72 +1321,7 @@ def create_color_legend():
     # print
     for k,v in Sim.legend.items():
         print(k,v)
-        # if nn not in Data.cables_dict:
-        #     key += "      "
-        #     # legend[key] = vp.vector(colors[0], colors[1], colors[2])
-        #     Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
-        # else:
-        #     for i, v in enumerate(Data.cables_dict[nn]):
-        #         Sim.legend_cables[(i, v)] = vp.vector(colors[0], colors[1], colors[2])
-        #         if i == 0:
-        #             Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
-        #             key += f" {nn:>2}-{Data.cables_dict[nn][i]:>2}"
-        #         else:
-        #             colors = increase_color(colors, delta)
-        #             key = f"        {nn:>2}-{Data.cables_dict[nn][i]:>2}"
-        # # legend[key] = vp.vector(colors[0], colors[1], colors[2])
-        # Sim.legend[key] = vp.vector(colors[0], colors[1], colors[2])
-        # nn += 1
 
-
-
-
-    # *********************************** old code
-
-    # for n in Data.node_numbers:
-    #     if n not in Data.cables_dict.keys():
-    #         # maybe in values ?
-    #         #found = False
-    #         #for vlist in Data.cables_dict.values():
-    #         #    for v in vlist:
-    #         #        found = True
-    #         #        break
-    #         #if not found:
-    #         nodes_without_cable.append(n)
-    # #nodes_without_cable = [i for i in node_numbers if i not in cables_dict]
-    # print("number of nodes:", number_of_nodes)
-    # print("nodes without cable source:", nodes_without_cable)
-    # number_of_cables = 0
-    # for k, v in Data.cables_dict.items():
-    #     number_of_cables += len(v)
-    # #print("number of cables:", number_of_cables)
-    # number_of_colors = number_of_cables + len(nodes_without_cable)
-    # delta = int(number_of_colors**(1/3))
-    # #print("number of colors:", number_of_colors)
-    # nn = min(node_numbers)
-    # colors = [0,0,0]
-    # legend = {}
-    # while nn <= max(node_numbers):
-    #     colors = increase_color(colors, delta)
-    #     key = f"{nn:>2} {Data.node_names[nn]}"
-    #     if nn not in Data.cables_dict:
-    #         key += "      "
-    #         #legend[key] = vp.vector(colors[0], colors[1], colors[2])
-    #         Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
-    #     else:
-    #         for i, v in enumerate(Data.cables_dict[nn]):
-    #             Sim.legend_cables[(i,v)] = vp.vector(colors[0], colors[1], colors[2])
-    #             if i == 0:
-    #                 Sim.legend_nodes[nn] = vp.vector(colors[0], colors[1], colors[2])
-    #                 key += f" {nn:>2}-{Data.cables_dict[nn][i]:>2}"
-    #             else:
-    #                 colors = increase_color(colors, delta)
-    #                 key = f"        {nn:>2}-{Data.cables_dict[nn][i]:>2}"
-    #     #legend[key] = vp.vector(colors[0], colors[1], colors[2])
-    #     Sim.legend[key] = vp.vector(colors[0], colors[1], colors[2])
-    #     nn += 1
-    #print(legend)
-    #return legend
 
 
 def increase_color(colors, delta):
@@ -2247,6 +2182,11 @@ def widget_func_legend_combo(b):
             textlabel.visible = True
         elif b.index == 1:
             textlabel.visible = False
+
+def widget_func_legend_height(b):
+    # winput
+    for textlabel in Sim.gui["legend"]:
+        textlabel.height = b.number
 
 
 def widget_func_load_preset(b):
@@ -3913,6 +3853,14 @@ def create_widgets():
                                            text=str(Sim.base["middles_r"]*2),
                                            bind=widget_func_pie_chart_size,
                                            )
+
+    Sim.scene3.append_to_caption(" legend height: ")
+    h = Sim.canvas_height / len(Sim.legend)
+    Sim.gui["legend_height"] = vp.winput(pos=Sim.scene3.caption_anchor,
+                                         type="numeric",
+                                         text= str(h),
+                                         bind=widget_func_legend_height,
+                                         )
     #Sim.scene3.append_to_caption(" text: ")
     #Sim.gui["pie_charts_text"] = vp.menu(pos=Sim.scene3.caption_anchor,
     #                                     bind=widget_func_pie_chart_text,
@@ -5096,6 +5044,8 @@ def create_stuff2():
 
     #Sim.scene_dia2.append_to_caption("Nodes (numbers or names or *) >>>")
     #Sim.gui["dia2"] = vp.winput(bind=widget_func_dia2, type="string", text="*", )
+
+
 
 
 def create_stuff():
