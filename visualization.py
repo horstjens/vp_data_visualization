@@ -1809,10 +1809,33 @@ def widget_func_cable_decimal(b):
 
 def widget_func_toggle_cables(b):
     """toggles visibility for sub-cables on floor (shadows) """
-    # TODO: leave shadows in peace (they have their own control box), toggle flying arrows visibility
     # print("setting subcables to:", b.checked)
     for curve in Sim.sub_cables.values():
         curve.visible = b.checked
+    # tubes:
+    for (i, j), tubelist in Sim.tubes_node.items():
+        for tube in tubelist:
+            tube.visible = b.checked
+    for tube in Sim.tubes_load.values():
+        tube.visible = b.checked
+    for tube in Sim.tubes_generator.values():
+        tube.visible = b.checked
+    for tube in Sim.tubes_storage.values():
+        tube.visible = b.checked
+    # arrow shadows:
+    for number, arrow in Sim.shadows.items():
+        arrow.visible = b.checked
+    # arrows:
+    for number, arrowlist in Sim.arrows.items():
+        for a in arrowlist:
+            a.visible = b.checked
+    # update gui checkboxes:
+    Sim.gui["box_cable_shadow"].checked = b.checked
+    Sim.gui["arrows_visible"].checked = b.checked
+    Sim.gui["box_arrow_shadow"].checked = b.checked
+
+
+
     # for a in Sim.arrows_ji.values():
     #        a.visible=b.checked
     # for a in Sim.arrows_ji.values():
@@ -1914,6 +1937,11 @@ def widget_func_toggle_arrow_shadow(b):
     for number, arrow in Sim.shadows.items():
         arrow.visible = b.checked
 
+def widget_func_toggle_arrows(b):
+    # make arrows visible / invisible
+    for number, arrowlist in Sim.arrows.items():
+        for a in arrowlist:
+            a.visible = b.checked
 
 def widget_func_toggle_flying_while_paused(b):
     Sim.flying_while_paused = b.checked
@@ -3808,6 +3836,10 @@ def create_widgets():
     Sim.gui["flying_while_paused"] = vp.checkbox(pos=Sim.scene3.caption_anchor,
                                                  text="", checked=False,
                                                  bind=widget_func_toggle_flying_while_paused)
+    Sim.scene3.append_to_caption("<code> | arrows visible: </code>")
+    Sim.gui["arrows_visible"] = vp.checkbox(pos=Sim.scene3.caption_anchor,
+                                            text="", checked=True,
+                                            bind=widget_func_toggle_arrows)
     Sim.scene3.append_to_caption("\n")
     # Sim.scene3.append_to_caption("<code>letters:     |  </code>")
     # Sim.gui["box_letters"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> |  </code>", checked=True,
