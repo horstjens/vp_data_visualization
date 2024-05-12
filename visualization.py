@@ -1833,14 +1833,13 @@ def widget_func_toggle_cables(b):
     Sim.gui["box_cable_shadow"].checked = b.checked
     Sim.gui["arrows_visible"].checked = b.checked
     Sim.gui["box_arrow_shadow"].checked = b.checked
-
-
-
-    # for a in Sim.arrows_ji.values():
-    #        a.visible=b.checked
-    # for a in Sim.arrows_ji.values():
-    #        a.visible=b.checked
     update_stuff()
+
+def widget_func_toggle_glass_visible(b):
+    for number, glass in Sim.generators_glass.items():
+        glass.visible=b.checked
+    for number, glass in Sim.storages_glass.items():
+        glass.bisible=b.checked
 
 def widget_func_toggle_storages(b):
     """toggle visibility for wind storages """
@@ -3870,6 +3869,11 @@ def create_widgets():
     Sim.gui["tube_opacity_slider"] = vp.slider(bind=widget_func_tube_opacity, min=0.0, max=1.0,
                                                pos=Sim.scene3.caption_anchor,
                                                value=f"{Sim.tubes_opacity}", length=300)
+    Sim.scene3.append_to_caption(" 'Glass half full' visible: ")
+    Sim.gui["glass_visible"] = vp.checkbox(pos=Sim.scene3.caption_anchor,
+                                           bind=widget_func_toggle_glass_visible,
+                                           checked = True
+                                           )
 
     Sim.scene3.append_to_caption("\n")
     # pie charts
