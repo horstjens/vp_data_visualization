@@ -9,8 +9,6 @@ import vpython as vp  # install with pip install vpython
 import os
 import signal
 
-
-
 VERSION = "0.34.c"
 
 """
@@ -310,11 +308,7 @@ class Sim:
                        )
 
     # net frequency
-    #scene_dia1 = vp.canvas(
-    #    width=dia_width,
-    #    height=dia_height,
-    #    background=vp.color.gray(0.9),
-    #)
+
     graph_dia1 = vp.graph(width = dia_width,
                           height=dia_height,
                           background=vp.color.gray(0.9),
@@ -325,15 +319,6 @@ class Sim:
                           fast=False,
                           )
 
-
-
-    #scene_dia2 = vp.canvas(
-    #    width=dia_width,
-    #    height=dia_height,
-    #    #background=vp.color.purple,
-    #    align="left",
-    #    background=vp.color.gray(0.85),
-    #)
 
     graph_dia2 = vp.graph(
         width=dia_width,
@@ -346,13 +331,6 @@ class Sim:
         fast=False,
     )
 
-    #scene_dia3 = vp.canvas(
-    #    width=dia_width,
-    #    height=dia_height,
-    #    # background=vp.color.purple,
-    #    background=vp.color.gray(0.8),
-    #)
-
     graph_dia3 = vp.graph(
         width=dia_width,
         height=dia_height,
@@ -364,13 +342,6 @@ class Sim:
         fast=False,
     )
 
-    #scene_dia4 = vp.canvas(
-    #    width=dia_width,
-    #    height=dia_height,
-    #    align="left",
-    #    #background=vp.color.purple,
-    #    background=vp.color.gray(0.75),
-    #)
 
     graph_dia4 = vp.graph(
         width=dia_width,
@@ -384,12 +355,6 @@ class Sim:
     )
 
 
-    #scene_dia5 = vp.canvas(width=dia_width,
-    #    height=dia_height,
-    #    #align="left",
-    #    #background=vp.color.purple,
-    #    background=vp.color.gray(0.7),)
-
     graph_dia5 = vp.graph(
         width=dia_width,
         height=dia_height,
@@ -402,12 +367,6 @@ class Sim:
     )
 
 
-    #scene_dia6 = vp.canvas(width=dia_width,
-    #                       height=dia_height,
-    #                       align="left",
-    #                       # background=vp.color.purple,
-    #                       background=vp.color.gray(0.65), )
-
     graph_dia6 = vp.graph(
         width=dia_width,
         height=dia_height,
@@ -418,14 +377,6 @@ class Sim:
         align="left",
         fast=False,
     )
-
-
-    # scene_dia7 = vp.canvas(width=dia_width,
-    #                        height=dia_height,
-    #                        # align="left",
-    #                        # background=vp.color.purple,
-    #                        background=vp.color.gray(0.6), )
-    #
 
     graph_dia7 = vp.graph(
         width=dia_width,
@@ -439,13 +390,6 @@ class Sim:
     )
 
 
-
-    # scene_dia8 = vp.canvas(width=dia_width,
-    #                        height=dia_height,
-    #                        align="left",
-    #                        # background=vp.color.purple,
-    #                        background=vp.color.gray(0.55), )
-
     graph_dia8 = vp.graph(
         width=dia_width,
         height=dia_height,
@@ -457,11 +401,6 @@ class Sim:
         fast=False,
     )
 
-    #scene_dia9 = vp.canvas(width=dia_width,
-    #                       height=dia_height,
-    #                       #align="left",
-    #                       # background=vp.color.purple,
-    #                       background=vp.color.gray(0.5), )
 
     graph_dia9 = vp.graph(
         width=dia_width,
@@ -474,11 +413,6 @@ class Sim:
         fast=False,
     )
 
-    # scene_dia10 = vp.canvas(width=dia_width,
-    #                        height=dia_height,
-    #                        align="left",
-    #                        # background=vp.color.purple,
-    #                        background=vp.color.gray(0.45), )
 
     graph_dia10 = vp.graph(
         width=dia_width,
@@ -490,12 +424,6 @@ class Sim:
         align="left",
         fast=False,
     )
-
-    # scene_dia11 = vp.canvas(width=dia_width,
-    #     height=dia_height,
-    #     #align="left",
-    #     #background=vp.color.purple,
-    #     background=vp.color.gray(0.4),)
 
     graph_dia11 = vp.graph(
         width=dia_width,
@@ -1053,10 +981,6 @@ class FlyingDisc(vp.cylinder):
             FlyingDisc.distances[self.boss][-1] = dist_j
 
 
-
-
-
-
 class FlyingArrow(vp.arrow):
     def __init__(self, i, j, k, i2j, **kwargs):
         super().__init__(**kwargs)
@@ -1173,13 +1097,6 @@ class FlyingArrow(vp.arrow):
 
             if not reached_end:
                 # reached end node
-                ##pass
-                #self.pos = npos
-                #self.pos += vp.norm(self.axis) * overshoot
-
-                #if self.axis != axis_old:
-                    # zig-zag point: jump back the half axis so that arrow rotates around middle point
-
                 self.pos = npos
                 self.pos += vp.norm(self.axis) * overshoot
                 self.pos += self.axis * -0.5  # FEHLER??
@@ -1190,20 +1107,6 @@ class FlyingArrow(vp.arrow):
                 self.pos = npos
                 self.pos += vp.norm(self.axis) * overshoot
 
-
-
-
-        # if vp.mag(self.pos0 - self.pointlist[self.k]) > vp.mag(self.pointlist[self.k2] - self.pointlist[self.k]):
-        #     # self.color=vp.color.red
-        #     # calculate new k2
-        #     if self.i2j:
-        #         self.k += 1
-        #     else:
-        #         self.k -= 1
-        #     self.new_k2()
-        #     self.pos = self.pointlist[self.k]
-        #     self.pos2 = self.pointlist[self.k2]
-        #     self.axis = vp.norm(self.pos2 - self.pos) * Sim.base["flying_arrows_length"]
 
         self.pos.y = save_y
         # update shadow
@@ -1958,17 +1861,7 @@ def widget_func_toggle_cable_shadow(b):
     for curve in Sim.load_lines.values():
         curve.visible = b.checked
         # pass
-        # if (i, j) in Sim.mini_shadows:
-        #    for n, shadow in Sim.mini_shadows[(i, j)].items():
-        #        shadow.visible = b.checked
 
-
-# def widget_func_toggle_losses(b):
-#    """toggles loss rectangles for cables"""
-#    for (i, j) in Sim.cables:
-#        if (i, j) in Sim.mini_losses:
-#            for n, loss_arrow in Sim.mini_losses[(i, j)].items():
-#                loss_arrow.visible = b.checked
 
 
 def widget_func_toggle_grid(b):
@@ -1976,11 +1869,6 @@ def widget_func_toggle_grid(b):
     for line in Sim.grid:
         line.visible = b.checked
 
-
-# def widget_func_toggle_letters(b):
-#    """toggle billboard letters"""
-#    for bb in Sim.letters.values():
-#        bb.visible = b.checked
 
 
 def widget_func_toggle_sloped_cables(b):
@@ -2004,17 +1892,18 @@ def widget_func_toggle_sloped_cables(b):
     update_stuff()
 
 
-# def widget_func_toggle_legend(b):
-#    """toggle visibility of legend"""
-#    for l in Sim.gui["legend"]:
-#        l.visible = b.checked
-
 
 def update_generator_glass():
     for number, glass in Sim.generators_glass.items():
+        #glass.visible = False
         glass.radius = Sim.generators[number].radius * 1.05
-        glass.axis.y = Sim.generators[number].rating * Sim.factor["generators_h"] + Sim.base["generators_h"]
-        print(glass.axis.y, Sim.generators[number].axis.y)
+        cyl = Sim.generators[number]
+        glass.axis = vp.vector(0, cyl.rating * Sim.factor["generators_h"] + Sim.base["generators_h"], 0)
+        #glass.axis.y = Sim.generators[number].rating * Sim.factor["generators_h"] + Sim.base["generators_h"]
+        #glass.axis.y = Sim.generators[number].axis.y * Sim.ganerators[number].rating
+        #glass.visible = True
+        if number == 23:
+            print(f"Generator glass number {number}, radius {glass.radius}, axis.y {glass.axis.y} , generator.axis.y {Sim.generators[number].axis.y}, rating {Sim.generators[number].rating}")
 
 def update_storage_glass():
     for number, glass in Sim.storages_glass.items():
@@ -2039,18 +1928,16 @@ def widget_func_generators_factor_r(b):
     update_stuff()
     update_generator_glass()
 
-
 def widget_func_loads_factor_r(b):
     Sim.factor["loads_r"] = b.number
     update_stuff()
-
-
 
 
 def widget_func_generators_base_h(b):
     Sim.base["generators_h"] = b.number
     update_stuff()
     update_generator_glass()
+
 
 def widget_func_storages_base_h(b):
     Sim.base["storages_h"] = b.number
@@ -2063,9 +1950,12 @@ def widget_func_storages_base_r(b):
     update_storage_glass()
 
 def widget_func_storages_factor_h(b):
+    print("old:", Sim.factor["storages_h"])
     Sim.factor["storages_h"] = b.number
+    print("new:", Sim.factor["storages_h"])
     update_stuff()
     update_storage_glass()
+    #print("final:", Sim.factor["storages_h"])
 
 def widget_func_storages_factor_r(b):
     Sim.factor["storages_r"] = b.number
@@ -2416,16 +2306,6 @@ def widget_func_load_preset(b):
     # in every case:
     update_stuff()
 
-#def widget_func_load_preset_A(b):
-#    pass
-
-#def widget_func_load_preset_B(b):
-#    pass
-
-#def widget_func_load_preset_C(b):
-#    pass
-
-
 
 
 def widget_func_loads_base_h(b):
@@ -2585,26 +2465,6 @@ def widget_func_factor_losses(b):
     update_stuff()
 
 
-# def widget_func_arrange():  # not a button anymore, therefore no parameter b.
-#     #Sim.gui["layout_save"].disabled = False
-#     Sim.gui["mode"].text = "mode is now: arrange"
-#     Sim.mode = "arrange"
-#     #Sim.gui["arrange"].disabled = True
-#     Sim.gui["simulation"].disabled = False
-#     Sim.gui["restart"].disabled = True
-#     Sim.gui["play"].disabled = True
-#     Sim.gui["frameslider"].disabled = True
-#     camera_to_topdown()  # TODO: pick coordinates are broken if coming back from siumlation mode
-#     # make visible
-#     for d in (Sim.cables, Sim.sub_nodes, Sim.sub_cables):  # dictionaries
-#         for o in d.values():
-#             o.visible = True
-
-# def widget_func_testflip():
-#    for (i,j), arrowlist in Sim.arrows.items():
-#        for arrow in arrowlist:
-#            arrow.flip_direction()
-
 def widget_func_animation_duration(b):
     """set new animation duration from gui"""
     # animation_duration = 2000  # seconds
@@ -2675,13 +2535,6 @@ def widget_func_start_simulation(b):
                                                  color=vp.color.white,
                                                  opacity=Sim.tubes_opacity)
 
-    # create little pie charts for loading at each cable "middle" disc
-    #Sim.pie_points = [] # curve points for pie chart from 0 to 100 % , 100 points, starting at right, moving counter-clock-wise
-    #for i in vp.arange(0, -vp.pi*2, -vp.pi*2/100):
-    #    Sim.pie_points.append(vp.vec(vp.cos(i) * Sim.base["middles_r"] * 1.05,
-    #                                 0,
-    #                                 vp.sin(i) * Sim.base["middles_r"] * 1.05,
-    #                                 ))
 
     print("middles:")
     for (i,j), disc in Sim.cables_middle.items():
@@ -2693,19 +2546,6 @@ def widget_func_start_simulation(b):
         Sim.pie_charts[(i,j)] = vp.box(pos=disc.pos + vp.vector(0, disc.axis.y, 0),
                                        size=vp.vector(Sim.base["middles_r"]*2, Sim.base["middles_r"]/10, Sim.base["middles_r"]*2),
                                        texture=Sim.pietextures[loading_t])
-
-
-
-
-
-        #Sim.pie_charts[(i,j)] = vp.extrusion()
-    #Sim.discs[node_number] = vp.extrusion(path=[start, vp.vector(start.x, start.y + 0.001, start.z)],
-    #                                      shape=vp.shapes.circle(radius=Sim.base["generators_r"] * 1.25,
-    #                                                             # 0.05 SHOould be parameter!
-    #                                                             angle1=vp.radians(170),
-    #                                                             angle2=vp.radians(-170)),
-    #                                      pickable=False)
-
 
 
     # free camera
@@ -2788,28 +2628,6 @@ def widget_func_start_simulation(b):
                 else:
                     break
 
-            ## print(k,k2, pos, pos2)
-            #axis = vp.norm(pos2 - pos)
-            #startpos = pos + axis * delta
-            #if k == 0:
-            #    startpos +=  vp.norm(axis) * Sim.nodes[i].radius
-
-            #while vp.mag(startpos - pos) < vp.mag(pos2 - pos):
-            #    FlyingArrow(i, j, k, True, pos=startpos, color=vp.color.gray(0.75))#
-
-            #    delta += Sim.base["flying_arrows_distance"] * Sim.base["flying_arrows_length"]
-            #    startpos = pos + axis * delta
-            #delta = vp.mag(startpos - pos) - vp.mag(pos2 - pos)
-            # vp.label(text=f"{k}", pos=pos, color=vp.color.white, box=False, opacity=0)
-
-            # create glass tube
-            ##tubes_radius_factor = 1.0
-            ##tubes_radius_delta = 0.0
-            ##tubes_opacity = 0.8
-            ##tubes_node = {}  # {(i,j):cylinder,}
-            ##tubes_load = {}  # {node_number:cylinder,}
-            ##tubes_generator = {}  # {generator_number:cylinder,}
-
     #  --- end flying arrows
 
     # --- start flying angles from generator to node ---
@@ -2871,41 +2689,6 @@ def layout_save():  # not a button anymore, therefore no parameter b. function g
         for (i, j), middle in Sim.cables_middle.items():
             myfile.write(f"{i} {j} {middle.pos.x} {middle.pos.y} {middle.pos.z}\n")
     print("file layout_data.txt is written")
-
-
-#def read_geodata():
-#    # Data.nodes = {}#
-#
-#    with open("nodes_geoloacations.csv") as csvfile:
-#        reader = csv.DictReader(csvfile)
-#        for row in reader:
-#            number = row["Node"]
-#            Data.nodes[int(number)] = (float(row["Latitude"]),  # 0
-#                                       float(row["Longitude"]),  # 1
-#                                       True if row["Generator"] == "Yes" else False,
-#                                       True if row["Load"] == "Yes" else False)
-
-    # print("geodata from nodes:")
-    # for number in Data.nodes:
-    #    #print(number, type(number), Data.nodes[number])
-    #    # move node objects on map:
-    #    z = geo_to_local(Data.nodes[number][0])
-    #    y = 0
-    #    x = Data.nodes[number][1]
-    #    is_generator = Data.nodes[number][2]
-    #    is_load = Data.nodes[number][3]
-    #    #print("node ", number, x, z, is_generator, is_load)
-    #    #npos = vp.vector(x, y, z)
-    #    #Sim.nodes[number].pos = npos
-    #    #Sim.letters[f"node {number}"].pos = npos + Sim.nodes[number].axis + vp.vector(0, 1, 0)
-    #    #Sim.labels[f"node {number}"].pos = npos
-    #    #if number in Sim.generator_lines:
-    #    #    Sim.generator_lines[number].modify(0, npos)
-    #    #for (i, j), curve in Sim.cables.items():
-    #    #    if i == number:
-    #    #        curve.modify(0, npos)
-    #    #    if j == number:
-    #    #        curve.modify(1, npos)
 
 
 def layout_load():
@@ -3739,17 +3522,6 @@ def create_widgets():
     Sim.scene3.append_to_caption(f"<code>{Data.generators_power_min:.2f}/{Data.generators_power_max:.2f}</code>")
     # Sim.scene3.append_to_caption("<code>      | </code>\n")
 
-    ##x1, z1, x2, z2 = bounding_box[0], bounding_box[1], bounding_box[2], bounding_box[3]
-    ##middle = (x1 + abs(x1 - x2) / 2, z1 + abs(z1 - z2) / 2)
-
-    # Sim.scene3.append_to_caption("<code>      |  </code>north/south: ")
-    # Sim.gui["camera_NS"] = vp.wtext(pos=Sim.scene3.caption_anchor, text=f"{Sim.scene.center.z:.2f}")
-    # vp.button(pos=Sim.scene3.caption_anchor, text="north", bind=widget_func_camera_north)
-    # Sim.gui["camera_NS_slider"] = vp.slider(pos=Sim.scene3.caption_anchor, bind=widget_func_camera_NS, min=Sim.z1, max=Sim.z2, value=Sim.middle[1], length=150)
-    # Sim.scene3.append_to_caption("west/east: ")
-    # Sim.gui["camera_WE"] = vp.wtext(pos=Sim.scene3.caption_anchor, text=f"{Sim.scene.center.x:.2f}")
-    # Sim.gui["camera_WE_slider"] = vp.slider(pos=Sim.scene3.caption_anchor, bind=widget_func_camera_WE, min=Sim.x1,
-    #                                        max=Sim.x2, value=Sim.middle[0], length=150)
 
     Sim.scene3.append_to_caption("\n")
 
@@ -4173,19 +3945,6 @@ def create_widgets():
     Sim.gui["bracket_right"] = vp.label(text="]", pos=Sim.center, xoffset=20, height=48, visible=True,
                                         color=vp.color.green, opacity=0, line=False, box=False)
     # legend:
-    # Sim.gui["legend"] = [
-    #    vp.label(text="nodes (busbars)", pixel_pos=True, pos=vp.vector(10, 790, 0), color=vp.color.blue, align="left",
-    #             box=False, visible=False),
-    #    vp.label(text="generators", pixel_pos=True, pos=vp.vector(10, 770, 0), color=vp.color.yellow, align="left",
-    #             box=False, visible=False),
-    #    vp.label(text="cables (connections)", pixel_pos=True, pos=vp.vector(10, 750, 0), color=vp.color.magenta,
-    #             align="left", box=False, visible=False),
-    #    vp.label(text="losses (connections)", pixel_pos=True, pos=vp.vector(10, 730, 0), color=vp.color.red,
-    #             align="left",
-    #             box=False, visible=False)
-    # ]
-    # vp.label(text="hold right mouse button and move to tilt camera. Use mouse wheel to zoom. Use shift and mouse button to pan",
-    #         pixel_pos=True, pos=vp.vector(50,790,0), color=vp.color.white, align="left", box=False")
 
 
 def mousebutton_down():
@@ -4401,42 +4160,12 @@ def create_stuff2_curves():
     # ============ frequency ===========
     #minmax_y = int(Data.frequency_max) + 1 - int(Data.frequency_min)
     minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    #Sim.scene_dia1.select()
-    #fdata = []
-    ## minmax_y = int(Data.frequency_max)+1 - int(Data.frequency_min)
-    #for i, sec in enumerate(Data.df["time"]):
-    #    f = (Data.df["frequency"][i] - int(Data.frequency_min)) / minmax_y  # 0 ... 1
-    #    y = f * 100
-    #    x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #    x = x * 200
-    #    fdata.append(vp.vector(x, y, 0))
-    # f=[vp.vector(*a) for a in zip(Data.df["time"]*10, Data.df["frequency"], [0 for i in Data.df["time"]] )]
-    #vp.curve(pos=fdata, color=vp.color.red)
 
     #Sim.graph_dia1
     #gdata = [(v.x, v.y) for v in fdata]
     gdata=list(zip(Data.df["time"],Data.df["frequency"]))
     gc = vp.gcurve(data=gdata, color=vp.color.red, graph=Sim.graph_dia1)
 
-
-    # ==========================================================================
-    # --------- nodes voltage  diagram xy -------------- 2nd row, left
-    #Sim.scene_dia2.select()
-    #minmax_y = Data.nodes_max - Data.nodes_min
-    #Sim.gui["node_curves"] = {}  # node_number: curve
-    #for col_name in [name for name in Data.col_names if name.startswith("VOLT_")]:
-    #    node_number = int(col_name.split("_")[1])
-    #    fdata = []
-    #    minmax_y = Data.nodes_max - Data.nodes_min
-    #    for i, sec in enumerate(Data.df["time"]):
-    #        f = (Data.df[col_name][i] - Data.nodes_min) / minmax_y  # 0 ... 1
-    #        y = f * 100
-    #        x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #        x = x * 200
-    #        fdata.append(vp.vector(x, y, 0))
-    #    Sim.gui["node_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-    #    #Sim.gui["wait_label"].text=f"plotting voltage curve for {node_number}"
-    ## print(Sim.gui["node_c"])
 
     #Sim.graph_dia2
     Sim.gui["node_curves"] = {}  # node_number: curve
@@ -4447,26 +4176,7 @@ def create_stuff2_curves():
                                                         color=Sim.legend_nodes[node_number],
                                                         data=gdata)
 
-    #gc = vp.gcurve(data=gdata, color=vp.color.red, graph=Sim.graph_dia1)
 
-
-    # ==========================================================================
-    # -----------------  Loads  power xy diagram (2nd row, right) -----------------
-    #Sim.scene_dia3.select()
-    #minmax_y = Data.loads_max - Data.loads_min
-    #Sim.gui["load_curves"] = {}  # node_number: curve
-    #for col_name in [name for name in Data.col_names if name.startswith("load_power_")]:
-    #    node_number = int(col_name.split("_")[-1])
-    #    fdata = []
-    #    for i, sec in enumerate(Data.df["time"]):
-    #        f = (Data.df[col_name][i] - Data.loads_min) / minmax_y  # 0 ... 1
-    #        y = f * 100
-    #        x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #        x = x * 200
-    #        fdata.append(vp.vector(x, y, 0))
-    #    Sim.gui["load_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        #Sim.gui["wait_label"].text=f"plotting load curve for {node_number}"
-    # print(Sim.gui["node_c"])
 
     Sim.gui["load_curves"] = {}  # node_number: curve
     for col_name in [name for name in Data.col_names if name.startswith("load_power_")]:
@@ -4476,23 +4186,6 @@ def create_stuff2_curves():
                                                     color=Sim.legend_nodes[node_number],
                                                     data=gdata)
 
-    #==========================================================
-    # ----------------------------------------------------------
-    # ------------------- generator angle xy diagram ------------------- 3rd row, left
-    #Sim.scene_dia4.select()
-    #minmax_y = Data.generators_angle_max - Data.generators_angle_min
-    #Sim.gui["generator_angle_curves"] = {}  # node_number: curve
-    #for col_name in [name for name in Data.col_names if name.startswith("generator_angle_")]:
-    #    node_number = int(col_name.split("_")[-1])
-    #    fdata = []
-    #    for i, sec in enumerate(Data.df["time"]):
-    #        f = (Data.df[col_name][i] - Data.generators_angle_min) / minmax_y  # 0 ... 1
-    #        y = f * 100
-    #        x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #        x = x * 200
-    #        fdata.append(vp.vector(x, y, 0))
-    #    Sim.gui["generator_angle_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        #Sim.gui["wait_label"].text=f"plotting generator angle curve for {node_number}"
     # print(Sim.gui["node_c"])
     Sim.gui["generator_angle_curves"] = {}  # node_number: curve
     for col_name in [name for name in Data.col_names if name.startswith("generator_angle_")]:
@@ -4503,27 +4196,6 @@ def create_stuff2_curves():
                                                                    data=gdata)
 
 
-
-
-
-    #================================================================================
-    # -----------  generator power xy diagram         3rd row, right -----------------
-    #Sim.scene_dia5.select()
-    #minmax_y = Data.generators_power_max - Data.generators_power_min
-    #Sim.gui["generator_power_curves"] = {}  # node_number: curve
-    #for col_name in [name for name in Data.col_names if name.startswith("generator_power_")]:
-    #    node_number = int(col_name.split("_")[-1])
-    #    fdata = []
-    #    for i, sec in enumerate(Data.df["time"]):
-    #        f = (Data.df[col_name][i] - Data.generators_power_min) / minmax_y  # 0 ... 1
-    #        y = f * 100
-    #        x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #        x = x * 200
-    #        fdata.append(vp.vector(x, y, 0))
-    #    Sim.gui["generator_power_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-        #Sim.gui["wait_label"].text=f"plotting generator power curve for {node_number}"
-    # print(Sim.gui["node_c"])
-
     Sim.gui["generator_power_curves"] = {}  # node_number: curve
     for col_name in [name for name in Data.col_names if name.startswith("generator_power_")]:
         node_number = int(col_name.split("_")[-1])
@@ -4531,23 +4203,6 @@ def create_stuff2_curves():
         Sim.gui["generator_power_curves"][node_number] = vp.gcurve(graph=Sim.graph_dia5,
                                                                    color=Sim.legend_nodes[node_number],
                                                                    data=gdata)
-
-    # ==================================================================00
-    # -----------generator loading xy diagram ------------------- 4th row, left --------------
-    # Sim.scene_dia6.select()
-    # minmax_y = Data.generators_loading_max - Data.generators_loading_min
-    # Sim.gui["generator_loading_curves"] = {}  # node_number: curve
-    # for col_name in [name for name in Data.col_names if name.startswith("generator_loading_")]:
-    #     node_number = int(col_name.split("_")[-1])
-    #     fdata = []
-    #     for i, sec in enumerate(Data.df["time"]):
-    #         f = (Data.df[col_name][i] - Data.generators_loading_min) / minmax_y  # 0 ... 1
-    #         y = f * 100
-    #         x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #         x = x * 200
-    #         fdata.append(vp.vector(x, y, 0))
-    #     Sim.gui["generator_loading_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-    #     #Sim.gui["wait_label"].text=f"plotting generator loading curve for {node_number}"
 
     Sim.gui["generator_loading_curves"] = {}  # node_number: curve
     for col_name in [name for name in Data.col_names if name.startswith("generator_loading_")]:
@@ -4558,23 +4213,6 @@ def create_stuff2_curves():
                                                                    data=gdata)
 
 
-    #====================================================================
-    # ---------------- storage power xy diagram --------------- 4th row, right --------------
-    # Sim.scene_dia7.select()
-    # minmax_y = Data.storage_power_max - Data.storage_power_min
-    # Sim.gui["storage_power_curves"] = {}  # node_number: curve
-    # for col_name in [name for name in Data.col_names if name.startswith("storage_power_")]:
-    #     node_number = int(col_name.split("_")[-1])
-    #     fdata = []
-    #     for i, sec in enumerate(Data.df["time"]):
-    #         f = (Data.df[col_name][i] - Data.storage_power_min) / minmax_y  # 0 ... 1
-    #         y = f * 100
-    #         x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #         x = x * 200
-    #         fdata.append(vp.vector(x, y, 0))
-    #     Sim.gui["storage_power_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-    #     #Sim.gui["wait_label"].text=f"plotting storage power curve for {node_number}"
-
     Sim.gui["storage_power_curves"] = {}  # node_number: curve
     for col_name in [name for name in Data.col_names if name.startswith("storage_power_")]:
         node_number = int(col_name.split("_")[-1])
@@ -4583,26 +4221,6 @@ def create_stuff2_curves():
                                                                      color=Sim.legend_nodes[node_number],
                                                                      data=gdata)
 
-    #=======================================================================
-    # -----------cable loading xy diagram ------------- 5th row, left ---------------
-    # Sim.scene_dia8.select()
-    # minmax_y = Data.cables_loading_max - Data.cables_loading_min
-    # Sim.gui["cable_loading_curves"] = {}  # node_number: curve
-    # for col_name in [name for name in Data.col_names if name.startswith("cable_loading_")]:
-    #     node_number = int(col_name.split("_")[-1])
-    #     fdata = []
-    #     for i, sec in enumerate(Data.df["time"]):
-    #         f = (Data.df[col_name][i] - Data.cables_loading_min) / minmax_y  # 0 ... 1
-    #         y = f * 100
-    #         x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #         x = x * 200
-    #         fdata.append(vp.vector(x, y, 0))
-    #     Sim.gui["cable_loading_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-    #     #Sim.gui["wait_label"].text=f"plotting cable loading curve for {node_number}"
-    # Sim.time_indicator_dia8 = vp.curve(canvas=Sim.scene_dia8, color=vp.color.green,
-    #                                    pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia8.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia8.camera.range = 100
 
     Sim.gui["cable_loading_curves"] = {}  # node_number: curve
     for col_name in [name for name in Data.col_names if name.startswith("cable_loading_")]:
@@ -4612,22 +4230,6 @@ def create_stuff2_curves():
                                                                      color=Sim.legend_nodes[node_number],
                                                                      data=gdata)
 
-    #==========================================================================
-    # ---------------cable power xy diagram   --------------- 5th row, right--------------------------
-    # Sim.scene_dia9.select()
-    # minmax_y = Data.cables_power_max - Data.cables_power_min
-    # Sim.gui["cable_power_curves"] = {}  # node_number: curve
-    # for col_name in [name for name in Data.col_names if name.startswith("cable_power_")]:
-    #     node_number = int(col_name.split("_")[-1])
-    #     fdata = []
-    #     for i, sec in enumerate(Data.df["time"]):
-    #         f = (Data.df[col_name][i] - Data.cables_power_min) / minmax_y  # 0 ... 1
-    #         y = f * 100
-    #         x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #         x = x * 200
-    #         fdata.append(vp.vector(x, y, 0))
-    #     Sim.gui["cable_power_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-    #     #Sim.gui["wait_label"].text=f"plotting cable power curve for {node_number}"
 
     Sim.gui["cable_power_curves"] = {}  # node_number: curve
     for col_name in [name for name in Data.col_names if name.startswith("cable_power_")]:
@@ -4636,24 +4238,6 @@ def create_stuff2_curves():
         Sim.gui["cable_power_curves"][node_number] = vp.gcurve(graph=Sim.graph_dia9,
                                                                      color=Sim.legend_nodes[node_number],
                                                                      data=gdata)
-
-    #==============================================================================
-    # -------- storage loading  diagram xy            6th row, left -------------------
-
-    # Sim.scene_dia10.select()
-    # minmax_y = Data.storage_loading_max - Data.storage_loading_min
-    # Sim.gui["storage_loading_curves"] = {}  # node_number: curve
-    # for col_name in [name for name in Data.col_names if name.startswith("storage_loading_")]:
-    #     node_number = int(col_name.split("_")[-1])
-    #     fdata = []
-    #     for i, sec in enumerate(Data.df["time"]):
-    #         f = (Data.df[col_name][i] - Data.storage_loading_min) / minmax_y  # 0 ... 1
-    #         y = f * 100
-    #         x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #         x = x * 200
-    #         fdata.append(vp.vector(x, y, 0))
-    #     Sim.gui["storage_loading_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-    #     #Sim.gui["wait_label"].text=f"plotting storage loading curve for {node_number}"
 
 
     Sim.gui["storage_loading_curves"] = {}  # node_number: curve
@@ -4665,24 +4249,6 @@ def create_stuff2_curves():
                                                                      data=gdata)
 
 
-    # =======================================================================
-    #---------------------storage state xy diagram          r06th row, right-------------
-    # Sim.scene_dia11.select()
-    # minmax_y = Data.storage_state_max - Data.storage_state_min
-    # Sim.gui["storage_state_curves"] = {}  # node_number: curve
-    # for col_name in [name for name in Data.col_names if name.startswith("storage_state_")]:
-    #     node_number = int(col_name.split("_")[-1])
-    #     fdata = []
-    #     for i, sec in enumerate(Data.df["time"]):
-    #         f = (Data.df[col_name][i] - Data.storage_state_min) / minmax_y  # 0 ... 1
-    #         y = f * 100
-    #         x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #         x = x * 200
-    #         fdata.append(vp.vector(x, y, 0))
-    #     Sim.gui["storage_state_curves"][node_number] = vp.curve(pos=fdata, color=Sim.legend_nodes[node_number])
-    #     #Sim.gui["wait_label"].text=f"plotting storage state curve for {node_number}"
-
-
     Sim.gui["storage_state_curves"] = {}  # node_number: curve
     for col_name in [name for name in Data.col_names if name.startswith("storage_state_")]:
         node_number = int(col_name.split("_")[-1])
@@ -4690,8 +4256,6 @@ def create_stuff2_curves():
         Sim.gui["storage_state_curves"][node_number] = vp.gcurve(graph=Sim.graph_dia11,
                                                                      color=Sim.legend_nodes[node_number],
                                                                      data=gdata)
-
-
 
 
 def create_stuff2():
@@ -4727,337 +4291,6 @@ def create_stuff2():
         Sim.needles[node_number] = vp.arrow(pos=vp.vector(0, 0, 0), axis=vp.vector(25, 0, 0), color=Sim.legend_nodes[node_number])
 
 
-    ##for number, cyl in Sim.generators.items():
-    ##    Sim.needles[number] = vp.arrow(pos=vp.vector(0, 0,0), axis=vp.vector(25,0,0), color=vp.color.black)
-
-
-#g += 1
-
-    # ------ frequency-xy diagram (400x250) -> 200 x 100 --------------- 1st row, right
-
-    #Sim.scene_dia1.select()
-    #Sim.scene_dia1.append_to_title("network frequency")
-    #y_axis = vp.curve(pos=[vp.vector(0,0,0), vp.vector(0,110,0)], color=vp.color.black)
-    #y_label = vp.label(pos=vp.vector(0,115,0), text="Hz (network frequency)",color=vp.color.black, box=False, opacity=0, align="left")
-    #x_axis = vp.curve(pos=[vp.vector(0,0,0), vp.vector(210,0,0)], color=vp.color.black)
-    #x_label = vp.label(pos=vp.vector(200,-8,0), text="time (s)", color=vp.color.black, box=False, opacity=0, align="right")
-    # grid
-    #minmax_y = int(Data.frequency_max) + 1 - int(Data.frequency_min)
-    #minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #for x in range(0,201, 10):
-
-    #    c = vp.color.gray(0.8)
-    #    if x % 50 == 0:
-    #        vp.label(pos=vp.vector(x, -20, 0), text=f"{x/200*minmax_x+int(Data.time_min):.2f}", height=10, box=False, opacity=0,
-    #                 color=Sim.dia_tick_color)
-    #        #c = vp.color.gray(0.3)
-    #        vp.curve(pos=[vp.vector(x, -3,0), vp.vector(x, 3,0)], color=Sim.dia_tick_color)
-    #    #vp.curve(pos=[vp.vector(x, 0, 0), vp.vector(x, 100, 0)], color=Sim.dia_tick_color, )
-    #for y in range(0,101,10):
-    #    c = vp.color.gray(0.8)
-    #    if y % 50 == 0:
-    #        vp.label(pos=vp.vector(-15, y, 0), text=f"{y/100*minmax_y+int(Data.frequency_min):.2f}", height=10, box=False, opacity=0,
-    #                 color=Sim.dia_tick_color)
-    #        #c = vp.color.gray(0.3)
-    #        vp.curve(pos=[vp.vector(-3,y,0), vp.vector(3,y,0)], color=Sim.dia_tick_color)
-    #    #vp.curve(pos=[vp.vector(0, y, 0), vp.vector(200, y, 0)], color=Sim.dia_tick_color, )
-
-    #Sim.scene_dia1.autoscale = True
-    #Sim.time_indicator_dia1 = vp.curve(canvas=Sim.scene_dia1, color=vp.color.green,
-    #                                   pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    #Sim.scene_dia1.center = vp.vector(100, 50, 0)
-    #Sim.scene_dia1.camera.range = 100
-    # --------- nodes voltage  diagram xy -------------- 2nd row, left
-    #Sim.scene_dia2.select()
-    #y_axis = vp.curve(pos=[vp.vector(0, 0, 0),vp.vector(0, 110, 0)], color=vp.color.black, )
-    #y_label = vp.label(pos=vp.vector(0, 115, 0), text="Volt (nodes)", color=vp.color.black, box=False,
-    #                   opacity=0, align="left")
-    #x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    #x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    #                   align="right")
-    # grid
-    #minmax_y = int(Data.frequency_max) + 1 - int(Data.frequency_min)
-    #minmax_y = Data.nodes_max  - Data.nodes_min
-    #minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    #print("voltage minmax y min max", minmax_y, Data.nodes_min, Data.nodes_max)
-    #for x in range(0, 201, 10):
-
-    #    #c = vp.color.gray(0.8)
-    #    if x % 50 == 0:
-    #        vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                 box=False, opacity=0, color=Sim.dia_tick_color)
-    #        #c = vp.color.gray(0.3)
-    #        vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    #
-    #    #vp.curve(pos=[vp.vector(x, 0, 0), vp.vector(x, 100, 0)], color=Sim.dia_tick_color, )
-    #for y in range(0, 101, 10):
-    #    #c = vp.color.gray(0.8)
-    #    if y % 50 == 0:
-    #        vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                 box=False, opacity=0, color=Sim.dia_tick_color)
-    #        #c = vp.color.gray(0.3)
-    #        vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    #    #vp.curve(pos=[vp.vector(0, y, 0), vp.vector(200, y, 0)], color=Sim.dia_tick_color, )
-    #Sim.time_indicator_dia2 = vp.curve(canvas=Sim.scene_dia2, color=vp.color.green,
-    #                                   pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    #Sim.scene_dia2.center = vp.vector(100, 50, 0)
-   # Sim.scene_dia2.camera.range = 100
-
-    # -----------------  Loads power xy diagram (2nd row, right) -----------------
-    #Sim.scene_dia3.select()
-    #y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    #y_label = vp.label(pos=vp.vector(0, 115, 0), text="Loads Power", color=vp.color.black, box=False,
-    #                   opacity=0, align="left")
-    #x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    #                   align="right")
-    # grid
-    # minmax_y = int(Data.frequency_max) + 1 - int(Data.frequency_min)
-    #minmax_y = Data.loads_max - Data.loads_min
-    #minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    #print("voltage minmax y min max", minmax_y, Data.nodes_min, Data.nodes_max)
-    #for x in range(0, 201, 10):
-    #
-    #    # c = vp.color.gray(0.8)
-    #    if x % 50 == 0:
-    #        vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                 box=False, opacity=0, color=Sim.dia_tick_color)
-    #        # c = vp.color.gray(0.3)
-    #        vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-
-    #    # vp.curve(pos=[vp.vector(x, 0, 0), vp.vector(x, 100, 0)], color=Sim.dia_tick_color, )
-    #for y in range(0, 101, 10):
-    #    # c = vp.color.gray(0.8)
-    #    if y % 50 == 0:
-    #        vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                 box=False, opacity=0, color=Sim.dia_tick_color)
-    #        # c = vp.color.gray(0.3)
-    #        vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    #    # vp.curve(pos=[vp.vector(0, y, 0), vp.vector(200, y, 0)], color=Sim.dia_tick_color, )
-    #Sim.time_indicator_dia3 = vp.curve(canvas=Sim.scene_dia3, color=vp.color.green,
-    #                                   pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    #Sim.scene_dia3.center = vp.vector(100, 50, 0)
-    #Sim.scene_dia3.camera.range = 100
-
-
-    # ------------------- generator angle xy diagram ------------------- 3rd row, left
-    # Sim.scene_dia4.select()
-    #
-    # y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    # y_label = vp.label(pos=vp.vector(0, 115, 0), text="Generator angle", color=vp.color.black, box=False,
-    #                    opacity=0, align="left")
-    # x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    # #                   align="right")
-    # # grid
-    # # minmax_y = int(Data.frequency_max) + 1 - int(Data.frequency_min)
-    # minmax_y = Data.generators_angle_max - Data.generators_angle_min
-    # minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    # # print("voltage minmax y min max", minmax_y, Data.nodes_min, Data.nodes_max)
-    # for x in range(0, 201, 10):
-    #
-    #     # c = vp.color.gray(0.8)
-    #     if x % 50 == 0:
-    #         vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         # c = vp.color.gray(0.3)
-    #         vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    #
-    #     # vp.curve(pos=[vp.vector(x, 0, 0), vp.vector(x, 100, 0)], color=Sim.dia_tick_color, )
-    # for y in range(0, 101, 10):
-    #     # c = vp.color.gray(0.8)
-    #     if y % 50 == 0:
-    #         vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         # c = vp.color.gray(0.3)
-    #         vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    #     # vp.curve(pos=[vp.vector(0, y, 0), vp.vector(200, y, 0)], color=Sim.dia_tick_color, )
-    # Sim.time_indicator_dia4 = vp.curve(canvas=Sim.scene_dia4, color=vp.color.green,
-    #                                    pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia4.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia4.camera.range = 100
-
-    # -----------  generator power xy diagram         3rd row, right -----------------
-    # Sim.scene_dia5.select()
-    #
-    # y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    # y_label = vp.label(pos=vp.vector(0, 115, 0), text="Generator power", color=vp.color.black, box=False,
-    #                    opacity=0, align="left")
-    # x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    # #                   align="right")
-    # minmax_y = Data.generators_power_max - Data.generators_power_min
-    # minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    # for x in range(0, 201, 10):
-    #     if x % 50 == 0:
-    #         vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    # for y in range(0, 101, 10):
-    #     if y % 50 == 0:
-    #         vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    # Sim.time_indicator_dia5 = vp.curve(canvas=Sim.scene_dia5, color=vp.color.green,
-    #                                    pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia5.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia5.camera.range = 100
-
-    #-----------generator loading xy diagram ------------------- 4th row, left --------------
-    # Sim.scene_dia6.select()
-    #
-    # y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    # y_label = vp.label(pos=vp.vector(0, 115, 0), text="Generator loading", color=vp.color.black, box=False,
-    #                    opacity=0, align="left")
-    # x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    # #                   align="right")
-    # minmax_y = Data.generators_loading_max - Data.generators_loading_min
-    # minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    # for x in range(0, 201, 10):
-    #     if x % 50 == 0:
-    #         vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    # for y in range(0, 101, 10):
-    #     if y % 50 == 0:
-    #         vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    # Sim.time_indicator_dia6 = vp.curve(canvas=Sim.scene_dia6, color=vp.color.green,
-    #                                    pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia6.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia6.camera.range = 100
-
-    #---------------- storage power xy diagram --------------- 4th row, right --------------
-    # Sim.scene_dia7.select()
-    #
-    # y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    # y_label = vp.label(pos=vp.vector(0, 115, 0), text="Storage power", color=vp.color.black, box=False,
-    #                    opacity=0, align="left")
-    # x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    # #                   align="right")
-    # minmax_y = Data.storage_power_max - Data.storage_power_min
-    # minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    # for x in range(0, 201, 10):
-    #     if x % 50 == 0:
-    #         vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    # for y in range(0, 101, 10):
-    #     if y % 50 == 0:
-    #         vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    # Sim.time_indicator_dia7 = vp.curve(canvas=Sim.scene_dia7, color=vp.color.green,
-    #                                    pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia7.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia7.camera.range = 100
-
-    # -----------cable loading xy diagram ------------- 5th row, left ---------------
-
-    # Sim.scene_dia8.select()
-    # y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    # y_label = vp.label(pos=vp.vector(0, 115, 0), text="Cable loading", color=vp.color.black, box=False,
-    #                    opacity=0, align="left")
-    # x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    # #                   align="right")
-    # minmax_y = Data.cables_loading_max - Data.cables_loading_min
-    # minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    # for x in range(0, 201, 10):
-    #     if x % 50 == 0:
-    #         vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    # for y in range(0, 101, 10):
-    #     if y % 50 == 0:
-    #         vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    # Sim.time_indicator_dia8 = vp.curve(canvas=Sim.scene_dia8, color=vp.color.green,
-    #                                    pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia8.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia8.camera.range = 100
-
-    #---------------cable power xy diagram   --------------- 5th row, right--------------------------
-    # Sim.scene_dia9.select()
-    # y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    # y_label = vp.label(pos=vp.vector(0, 115, 0), text="Cable power", color=vp.color.black, box=False,
-    #                    opacity=0, align="left")
-    # x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    # #                   align="right")
-    # minmax_y = Data.cables_power_max - Data.cables_power_min
-    # minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    # for x in range(0, 201, 10):
-    #     if x % 50 == 0:
-    #         vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    # for y in range(0, 101, 10):
-    #     if y % 50 == 0:
-    #         vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    # Sim.time_indicator_dia9 = vp.curve(canvas=Sim.scene_dia9, color=vp.color.green,
-    #                                    pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia9.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia9.camera.range = 100
-    # #vp.ring()
-
-    #-------- storage loading  diagram xy            6th row, left -------------------
-
-    # Sim.scene_dia10.select()
-    # y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    # y_label = vp.label(pos=vp.vector(0, 115, 0), text="Storage loading", color=vp.color.black, box=False,
-    #                    opacity=0, align="left")
-    # x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    # #                   align="right")
-    # minmax_y = Data.storage_loading_max - Data.storage_loading_min
-    # minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    # for x in range(0, 201, 10):
-    #     if x % 50 == 0:
-    #         vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    # for y in range(0, 101, 10):
-    #     if y % 50 == 0:
-    #         vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    # Sim.time_indicator_dia10 = vp.curve(canvas=Sim.scene_dia10, color=vp.color.green,
-    #                                     pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia10.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia10.camera.range = 100
-
-    #---------------------storage state xy diagram          r06th row, right-------------
-    # Sim.scene_dia11.select()
-    # y_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)], color=vp.color.black, )
-    # y_label = vp.label(pos=vp.vector(0, 115, 0), text="Storage state", color=vp.color.black, box=False,
-    #                    opacity=0, align="left")
-    # x_axis = vp.curve(pos=[vp.vector(0, 0, 0), vp.vector(210, 0, 0)], color=vp.color.black, )
-    # # x_label = vp.label(pos=vp.vector(200, -18, 0), text="time (s)", color=vp.color.black, box=False, opacity=0,
-    # #                   align="right")
-    # minmax_y = Data.storage_state_max - Data.storage_state_min
-    # minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    # for x in range(0, 201, 10):
-    #     if x % 50 == 0:
-    #         vp.label(pos=vp.vector(x, -20, 0), text=f"{x / 200 * minmax_x + int(Data.time_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(x, -3, 0), vp.vector(x, 3, 0)], color=Sim.dia_tick_color)
-    # for y in range(0, 101, 10):
-    #     if y % 50 == 0:
-    #         vp.label(pos=vp.vector(-15, y, 0), text=f"{y / 100 * minmax_y + int(Data.nodes_min):.2f}", height=10,
-    #                  box=False, opacity=0, color=Sim.dia_tick_color)
-    #         vp.curve(pos=[vp.vector(-3, y, 0), vp.vector(3, y, 0)], color=Sim.dia_tick_color)
-    # Sim.time_indicator_dia11 = vp.curve(canvas=Sim.scene_dia11, color=vp.color.green,
-    #                                     pos=[vp.vector(0, 0, 0), vp.vector(0, 110, 0)])
-    # Sim.scene_dia11.center = vp.vector(100, 50, 0)
-    # Sim.scene_dia11.camera.range = 100
-
     #--------------
     #vp.box()
     #Sim.scene_dia11.append_to_caption("legend:")
@@ -5077,11 +4310,6 @@ def create_stuff2():
                                        width=Sim.dia_width*2,  # because 2 columns of diagrams at the right
                                        text="all nodes",
                                        )
-
-    #Sim.scene_dia2.append_to_caption("Nodes (numbers or names or *) >>>")
-    #Sim.gui["dia2"] = vp.winput(bind=widget_func_dia2, type="string", text="*", )
-
-
 
 
 def create_stuff():
@@ -5200,7 +4428,7 @@ def create_stuff():
             Sim.storages[node_number].what = "storage"
             Sim.storages[node_number].number = node_number  # storage number
             Sim.storages[node_number].rating = Data.df_locations["storage_rating"][node_number - 1]
-            print("storage:", node_number, "rating:", Data.df_locations["storage_rating"][node_number - 1])
+            #print("storage:", node_number, "rating:", Data.df_locations["storage_rating"][node_number - 1])
             # gnumber = Data.nodes_to_generators[number]
             # Sim.generators[is_generator].node_number = number  # corresponding node number
             Sim.letters[f"storage {node_number}"] = vp.label(text=f"{name.lower()}", color=vp.color.white,
@@ -5579,9 +4807,6 @@ def update_stuff():
     if delta != 0:
         degree = 90 * delta/0.1
         needle.rotate(axis=vp.vector(0,0,-1), origin=vp.vector(0,0,0), angle=vp.radians(degree))
-
-
-
     Sim.scene_dia_needle_angle.select()
     radius = 30
     for number, cyl in Sim.generators.items():
@@ -5590,33 +4815,6 @@ def update_stuff():
         needle = Sim.needles[number]
         needle.axis = vp.vector(0,radius,0)  # point to right (0°)
         needle.rotate(axis=vp.vector(0,0,1), angle=vp.radians(-g_angle))
-
-
-    # dia1 time indicator (green vertical curve), x=0..200
-
-    #minmax_x = int(Data.time_max) + 1 - int(Data.time_min)
-    #x = (sec - int(Data.time_min)) / minmax_x  # minmax_x = int(Data.time_max) +1 - int(Data.time_min)
-    #x = x * 200
-
-
-    # for green_vertical_bar in (#Sim.time_indicator_dia1,
-    #                            #Sim.time_indicator_dia2,
-    #                            #Sim.time_indicator_dia3,
-    #                            #Sim.time_indicator_dia4,
-    #                            #Sim.time_indicator_dia5,
-    #                            #Sim.time_indicator_dia6,
-    #                            #Sim.time_indicator_dia7,
-    #                            #Sim.time_indicator_dia8,
-    #                            #Sim.time_indicator_dia9,
-    #                            Sim.time_indicator_dia10,
-    #                            Sim.time_indicator_dia11,
-    #                            ):
-    #     #Sim.time_indicator_dia1.modify(0, pos=vp.vector(x, 0, 0))
-    #     #Sim.time_indicator_dia1.modify(1, pos=vp.vector(x, 110, 0))
-    #         green_vertical_bar.modify(0, pos=vp.vector(x,0,0))
-    #         green_vertical_bar.modify(1, pos=vp.vector(x, 110, 0))
-
-
 
     Sim.scene.select()
 
@@ -5627,8 +4825,9 @@ def update_stuff():
             loading = Data.df[f"storage_loading_{number}"][Sim.i]
             power = Data.df[f"storage_power_{number}"][Sim.i]
             state = Data.df[f"storage_state_{number}"][Sim.i]
-            #print(number, ":", loading, power, state)
+            #print("storage", number, ":", loading, power, state)
         except KeyError:
+            print("could not found storage data for ", number)
             continue
         if number in Sim.tubes_storage:
             tube = Sim.tubes_storage[number]
@@ -5636,19 +4835,16 @@ def update_stuff():
                 tube.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
             else:
                 tube.pos.y = Sim.nodes[number].axis.y
-
         cyl.power = power
         cyl.radius = Sim.base["storages_r"] + power * Sim.factor["storages_r"]
         cyl.axis = vp.vector(0, Sim.base["storages_h"] + power * Sim.factor["storages_h"], 0)
         Sim.letters[f"storage {number}"].pos.y = cyl.axis.y
-
         if Sim.label_storage == "p":
             ff = "p: {" + f":.{Sim.decimals_storage}f" + "}"
             Sim.labels[f"storage {number}"].text = ff.format(power)
         elif Sim.label_storage == "loading":
             ff = "loading: {" + f":.{Sim.decimals_storage}f" + "}"
             Sim.labels[f"storage {number}"].text = ff.format(loading)
-
         if Sim.dynamic_colors["storages"]:
             cyl.color = update_color(power, "storages")
         else:
@@ -5675,7 +4871,6 @@ def update_stuff():
                 tube.pos.y = Sim.base["cables_h"] + power * Sim.factor["cables_h"]
             else:
                 tube.pos.y = Sim.nodes[number].axis.y
-
         cyl.power = power
         cyl.radius = Sim.base["loads_r"] + power * Sim.factor["loads_r"]
         cyl.axis = vp.vector(0, Sim.base["loads_h"] + power * Sim.factor["loads_h"], 0)
@@ -5699,7 +4894,6 @@ def update_stuff():
 
     # --------- generators ----------------
     for number, cyl in Sim.generators.items():
-
         # try:
         #    power = Data.df[col_name_power(number)][Sim.i]
         #    g_angle = Data.df[col_name_angle(number)][Sim.i]
@@ -5751,8 +4945,6 @@ def update_stuff():
         elif Sim.label_generator == "loading":
             ff = "loading: {" + f":.{Sim.decimals_generator}f" + "}"
             Sim.labels[f"generator {number}"].text = ff.format(loading)
-
-
 
         # print(Sim.i, number, power)
         # color for generator, calculate % mva value
@@ -5807,25 +4999,7 @@ def update_stuff():
     #
     for number, targetlist in Data.cables_dict.items():
         for target in targetlist:
-            # get power value from dataframe
-            # try:
-            #    power1 = Data.df[col_name_cable(number, target)][Sim.i]
-            #    power2 = Data.df[col_name_cable(target, number)][Sim.i]
-            # except KeyError:
-            #    print(
-            #        f"KeyError: could not find power1, power2 value(s) in line {Sim.i} for columns {col_name_cable(number, target)}, {col_name_cable(target, number)}")
-            #    continue
-            # loss = abs(power1 + power2)
-            # TODO: mva calculation
 
-
-            # if (number, target) in Data.mva_cables:
-            #    mva_rating = Data.mva_cables[(number, target)]
-            # elif (target,number) in Data.mva_cables:
-            #    mva_rating = Data.mva_cables[(target, number)]
-            # else:
-            #    print("could not find mva_rating (cables) for", number, target)
-            #    continue
 
             try:
                 mva = Data.df_locations.iloc[number-1][f"to_{target}"]
@@ -5855,16 +5029,6 @@ def update_stuff():
                     # tube.axis.y = Sim.nodes[number].axis.y + length / total_length * deltay
                     tube.axis.y = 0 + length / total_length * deltay
                     oldy = tube.axis.y
-
-            ##numtar = all((power1 > 0, power2 < 0))  # True if flow from number to target
-            ##power = power1 if numtar else power2
-            # print(number, target, "power is:", power1, power2, loss, numtar)
-            # p = power
-            # q = 0
-            # loading = (p ** 2 + q ** 2) ** 0.5 / mva_rating * 100
-            ##loading = Data.df[f"loading_cable_{number}_{target}"][Sim.i]
-            # print(f"loading calc. for cable {number} {target}: p={power} q=0 mva_rating={mva_rating} loading =  {loading}")
-            # mva: {(1, 2): 600, (1, 39): 1000, (2, 3): 500, (2, 25): 500, (2, 30): 900, (3, 4): 500, (3, 18): 500, (4, 5): 600, (4, 14): 500, (5, 6): 1200, (5, 8): 900, (6, 7): 900, (6, 11): 480, (6, 31): 1800, (7, 8): 900, (8, 9): 900, (9, 39): 900, (10, 11): 600, (10, 13): 600, (10, 32): 900, (12, 11): 500, (12, 13): 500, (13, 14): 600, (14, 15): 600, (15, 16): 600, (16, 17): 600, (16, 19): 600, (16, 21): 600, (16, 24): 600, (17, 18): 600, (17, 27): 600, (19, 20): 900, (19, 33): 900, (20, 34): 900, (21, 22): 900, (22, 23): 600, (22, 35): 900, (23, 24): 600, (23, 36): 900, (25, 26): 600, (25, 37): 900, (26, 27): 600, (26, 28): 600, (26, 29): 600, (28, 29): 600, (29, 38): 1200}
 
 
             if f"cable {number}-{target}" in Sim.labels:
@@ -5939,8 +5103,7 @@ def update_stuff():
                     # flip direction?
                     if numtar != arrow.i2j:
                         arrow.flip_direction()
-
-    return  # TODO code here
+    return  
 
 
 def flying_discs():
@@ -5965,9 +5128,6 @@ def flying_discs():
                         FlyingDisc(name, power)
         for fd in [f for f in FlyingDisc.container if f.boss == name]:
             fd.update(power)
-
-
-
 
 
 def flying_arrows():
@@ -6048,8 +5208,7 @@ def main():
             ## get the data from df (for y values)
             update_stuff()
     print("bye bye")
-    #sys.exit()
-    # close browser window?
+    # close browser window
     os.kill(os.getpid(), signal.SIGINT)
 
 
@@ -6060,7 +5219,7 @@ if __name__ == "__main__":
     create_color_legend()  # for Sim.legend, Sim.legend_nodes, Sim.legend_cables
     create_stuff()
 
-    create_stuff2() # preperation (full curves are plotted from start button function)
+    create_stuff2() # 
 
     Sim.scene.select()
     layout_load()
