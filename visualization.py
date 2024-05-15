@@ -9,7 +9,7 @@ import vpython as vp  # install with pip install vpython
 import os
 import signal
 
-VERSION = "0.34.d"
+VERSION = "0.34.e"
 
 """
 generators (circles in diagram)
@@ -5191,8 +5191,11 @@ def main():
         simtime += Sim.dt
         time_since_framechange += Sim.dt
         Sim.gui["cursor"].text = f"long: {Sim.scene.mouse.pos.x:.2f}, lat: {geo_to_local(Sim.scene.mouse.pos.z):.2f}"
-        Sim.gui[
-            "camera"].text = f"camera: {Sim.scene.camera.pos} axis: {Sim.scene.forward} center: {Sim.scene.center} range: {Sim.scene.range:.2f} fov: {Sim.scene.fov:.2f}"
+        Sim.gui["camera"].text = f"camera: {Sim.scene.camera.pos} axis: {Sim.scene.forward} center: {Sim.scene.center} range: {Sim.scene.range:.2f} fov: {Sim.scene.fov:.2f}"
+        angle_now = vp.degrees(vp.diff_angle(vp.vector(0, Sim.scene.forward.y, Sim.scene.forward.z), vp.vector(0, 0, 1)))
+        Sim.gui["camera_pitch"].text = f"{angle_now:.2f}"
+        Sim.gui["camera_pitch_slider"].value = angle_now
+
 
         # ----- move camera with wasd keys?
         #pressed_keys = vp.keysdown()
