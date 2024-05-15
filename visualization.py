@@ -9,7 +9,7 @@ import vpython as vp  # install with pip install vpython
 import os
 import signal
 
-VERSION = "0.34.e"
+VERSION = "0.34.f"
 
 """
 generators (circles in diagram)
@@ -1280,6 +1280,11 @@ def camera_to_topdown():
     # Sim.scene.camera.pos.z = Sim.center.z
 
 
+def widget_func_dia_width(b):
+    #winput
+    Sim.dia_width = int(b.number)
+    Sim.graph_dia1.width = int(b.number)
+
 def widget_func_dia2(b):
     print("nodes entry:", b.text)
 
@@ -2354,6 +2359,35 @@ def widget_func_cables_base_r(b):
     radius = Sim.base["cables_r"] + Sim.factor["cables_r"] * Data.cables_power_max * Sim.tubes_radius_factor + Sim.tubes_radius_delta
     set_tube_radius(radius)
 
+def widget_func_camera_goto(b):
+    #menu
+    print("camera should go to node:", b.selected)
+    if b.selected == "center":
+        camera_to_topdown()
+        return
+    node_number = int(b.selected.split()[0])
+    nodepos = Sim.nodes[node_number].pos
+    print(nodepos)
+
+    Sim.scene.camera.pos = vp.vector(nodepos.x, Sim.camera_height, nodepos.z)
+    Sim.scene.forward = vp.vector(0.0, -1, 0)  # camera pos is moved
+    # Sim.scene.camera.pos = vp.vector(Sim.center.x, Sim.camera_height , Sim.center.z) # horrible result
+    Sim.scene.camera.pos.x = nodepos.x  # ok
+
+    Sim.scene.up = vp.vector(0, 0, -1)
+
+    ###Sim.scene.camera.pos = vp.vector(Sim.center.x, Sim.camera_height, geo_to_local(Sim.center.z))
+    # Sim.scene.range = Sim.grid_max_x / 2
+    #Sim.scene.autoscale = True
+
+    # Sim.scene.userzoom = False
+    #Sim.scene.userspin = False
+    # Sim.scene.camera.pos = vp.vector(Sim.center.x, Sim.camera_height , geo_to_local(Sim.center.z))
+    # Sim.scene.camera.pos.x = Sim.center.x
+    #Sim.scene.center = Sim.center
+    Sim.scene.autoscale = False
+    Sim.scene.range = Sim.camera_range
+
 def widget_func_camera_north(b):
     Sim.scene.camera.pos.z -= 0.25
     print(Sim.scene.camera.pos)
@@ -3315,6 +3349,7 @@ def create_widgets():
     Sim.scene3.append_to_caption("map texture: ")
     Sim.gui["map"] = vp.menu(pos=Sim.scene3.caption_anchor, bind=widget_func_map, choices=["google map", "borders", "nothing"], index=0)
 
+
     Sim.scene3.append_to_caption("\n")
     #Sim.scene3.append_to_caption("save presets: ")
 
@@ -3326,6 +3361,13 @@ def create_widgets():
     Sim.gui["camerapos2"] = vp.button(pos=Sim.scene3.caption_anchor, text=" A ", bind=widget_func_camera2, disabled=True)
     Sim.gui["camerapos3"] = vp.button(pos=Sim.scene3.caption_anchor, text=" B ", bind=widget_func_camera3, disabled=True)
     Sim.gui["camerapos4"] = vp.button(pos=Sim.scene3.caption_anchor, text=" C ", bind=widget_func_camera4, disabled=True)
+    Sim.scene3.append_to_caption("camera goto:")
+    node_numbers = [f"{n} {Data.node_names[n]}" for n in Sim.nodes]
+    node_numbers.insert(0, "center")
+    Sim.gui["goto"] = vp.menu(pos=Sim.scene3.caption_anchor,
+                              selected="center",
+                              bind=widget_func_camera_goto,
+                              choices=node_numbers)
     Sim.scene3.append_to_caption("\n")
     Sim.scene3.append_to_caption("<code>Nodes:       | </code>")
     Sim.gui["box_node"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> |  </code>", checked=True,
@@ -3690,6 +3732,14 @@ def create_widgets():
                                          text= str(h),
                                          bind=widget_func_legend_height,
                                          )
+    Sim.scene3.append_to_caption("graph dimension in pixel: width: ")
+
+    # changing width of graphs (dia) dynamically can only shrink them, but not expand them
+    #Sim.gui["dia_width"] = vp.winput(pos=Sim.scene3.caption_anchor,
+    #                                 bind=widget_func_dia_width,
+    #                                   type="numeric",
+    #                                   text=Sim.dia_width,
+    #                                   )
     #Sim.scene3.append_to_caption(" text: ")
     #Sim.gui["pie_charts_text"] = vp.menu(pos=Sim.scene3.caption_anchor,
     #                                     bind=widget_func_pie_chart_text,
