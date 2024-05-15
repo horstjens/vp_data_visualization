@@ -9,7 +9,7 @@ import vpython as vp  # install with pip install vpython
 import os
 import signal
 
-VERSION = "0.34.c"
+VERSION = "0.34.d"
 
 """
 generators (circles in diagram)
@@ -2323,15 +2323,36 @@ def widget_func_loads_base_r(b):
     update_stuff()
 
 
+def set_tube_radius(radius):
+    for (i, j), tubelist in Sim.tubes_node.items():
+        for tube in tubelist:
+            tube.radius = radius
+    for tube in Sim.tubes_load.values():
+        tube.radius = radius
+    for tube in Sim.tubes_generator.values():
+        tube.radius = radius
+    for tube in Sim.tubes_storage.values():
+        tube.radius = radius
+    ## generator glass
+    #for glass in Sim.generators_glass.values():
+    #    glass.opacity = b.value
+    ## storage glass
+    #for glass in Sim.storages_glass.values():
+    #    glass.opacity = b.value
+
 def widget_func_cables_factor_r(b):
     Sim.factor["cables_r"] = b.number
     update_stuff()
-
+    # tubes radius
+    radius = Sim.base["cables_r"] + Sim.factor["cables_r"] * Data.cables_power_max * Sim.tubes_radius_factor + Sim.tubes_radius_delta
+    set_tube_radius(radius)
 
 def widget_func_cables_base_r(b):
     Sim.base["cables_r"] = b.number
     update_stuff()
-
+    # tubes radius
+    radius = Sim.base["cables_r"] + Sim.factor["cables_r"] * Data.cables_power_max * Sim.tubes_radius_factor + Sim.tubes_radius_delta
+    set_tube_radius(radius)
 
 def widget_func_camera_north(b):
     Sim.scene.camera.pos.z -= 0.25
@@ -2536,7 +2557,7 @@ def widget_func_start_simulation(b):
                                                  opacity=Sim.tubes_opacity)
 
 
-    print("middles:")
+    #print("middles:")
     for (i,j), disc in Sim.cables_middle.items():
         loading = Data.df[f"cable_loading_{i}_{j}"][Sim.i] # value from 0 to 100 ? (is percent?)
         loading_t = int(min(100, loading)) # restrict pie chart to 100, get value for texture
@@ -5103,7 +5124,7 @@ def update_stuff():
                     # flip direction?
                     if numtar != arrow.i2j:
                         arrow.flip_direction()
-    return  
+    return
 
 
 def flying_discs():
@@ -5219,7 +5240,7 @@ if __name__ == "__main__":
     create_color_legend()  # for Sim.legend, Sim.legend_nodes, Sim.legend_cables
     create_stuff()
 
-    create_stuff2() # 
+    create_stuff2() #
 
     Sim.scene.select()
     layout_load()
