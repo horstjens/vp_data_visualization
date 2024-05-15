@@ -5204,12 +5204,33 @@ def flying_discs():
 def flying_arrows():
     # flying arrows
     for (i, j), arrowlist in Sim.arrows.items():
+        power = Data.df[f"cable_power_{i}_{j}"][Sim.i]
         for arrow in arrowlist:
-            arrow.update(Sim.dt)
+            if power == 0:
+                arrow.color = vp.color.gray(0.5)
+            else:
+                arrow.color = Sim.colors["cables"]
+                arrow.update(Sim.dt)
     for number, arrow in Sim.generator_arrows.items():
-        arrow.update(Sim.dt)
+        power = Data.df[f"generator_power_{arrow.gen_number}"][Sim.i]
+        #except KeyError:
+        #    continue
+        if power == 0:
+            arrow.color = vp.color.gray(0.5)
+        else:
+            arrow.color = vp.color.yellow
+            arrow.update(Sim.dt)
     for number, arrow in Sim.load_arrows.items():
-        arrow.update(Sim.dt)
+        #try:
+        power = Data.df[f"load_power_{arrow.load_number}"][Sim.i]
+        #except KeyError:
+        #    continue
+        if power == 0:
+            arrow.color = vp.color.gray(0.5)
+        else:
+            arrow.color = vp.color.orange
+            arrow.update(Sim.dt)
+
 
 
 def main():
