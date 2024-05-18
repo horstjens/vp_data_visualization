@@ -1269,7 +1269,7 @@ def camera_to_topdown():
     Sim.scene.autoscale = True
 
     # Sim.scene.userzoom = False
-    Sim.scene.userspin = False
+    Sim.scene.userspin = True
     # Sim.scene.camera.pos = vp.vector(Sim.center.x, Sim.camera_height , geo_to_local(Sim.center.z))
     # Sim.scene.camera.pos.x = Sim.center.x
     Sim.scene.center = Sim.center
@@ -2539,7 +2539,9 @@ def widget_func_animation_duration(b):
 def widget_func_start_simulation(b):
     # create stuff after "start simulation" button was clicked
     Sim.scene.select()
+    Sim.scene.userspin = True
     Sim.gui["create_curves"].disabled=False
+    Sim.gui["goto"].disabled = False
     #Sim.gui["wait_label"] = vp.label(pixel_pos=True,
     #                                 pos=vp.vector(Sim.canvas_width/2, Sim.canvas_height/2,0),
     #                                 height=48,
@@ -3367,7 +3369,8 @@ def create_widgets():
     Sim.gui["goto"] = vp.menu(pos=Sim.scene3.caption_anchor,
                               selected="center",
                               bind=widget_func_camera_goto,
-                              choices=node_numbers)
+                              choices=node_numbers,
+                              disabled=True)
     Sim.scene3.append_to_caption("\n")
     Sim.scene3.append_to_caption("<code>Nodes:       | </code>")
     Sim.gui["box_node"] = vp.checkbox(pos=Sim.scene3.caption_anchor, text="<code> |  </code>", checked=True,
@@ -5254,6 +5257,7 @@ def main():
     Sim.scene3.userpan = False
 
     camera_to_topdown()
+    Sim.scene.userspin=False
     simtime = 0
     time_since_framechange = 0
     # frame_number = 0  # Sim.i
@@ -5262,10 +5266,12 @@ def main():
         simtime += Sim.dt
         time_since_framechange += Sim.dt
         Sim.gui["cursor"].text = f"long: {Sim.scene.mouse.pos.x:.2f}, lat: {geo_to_local(Sim.scene.mouse.pos.z):.2f}"
-        Sim.gui["camera"].text = f"camera: {Sim.scene.camera.pos} axis: {Sim.scene.forward} center: {Sim.scene.center} range: {Sim.scene.range:.2f} fov: {Sim.scene.fov:.2f}"
+        Sim.gui["camera"].text = f"camera: {Sim.scene.camera.pos} forward: {Sim.scene.forward} center: {Sim.scene.center} range: {Sim.scene.range:.2f} fov: {Sim.scene.fov:.2f}"
         angle_now = vp.degrees(vp.diff_angle(vp.vector(0, Sim.scene.forward.y, Sim.scene.forward.z), vp.vector(0, 0, 1)))
         Sim.gui["camera_pitch"].text = f"{angle_now:.2f}"
         Sim.gui["camera_pitch_slider"].value = angle_now
+        #Sim.scene.forward.x = 0
+        #Sim.scene.forward.y = 0
 
 
         # ----- move camera with wasd keys?
