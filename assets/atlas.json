@@ -1,0 +1,138 @@
+{
+  "solar1": {
+    "x": 0,
+    "y": 0,
+    "width": 100,
+    "height": 100,
+    "anchorY": 100,
+    "mask": true
+  },
+  "solar2": {
+    "x": 148,
+    "y": 0,
+    "width": 100,
+    "height": 100,
+    "anchorY": 100,
+    "mask": true
+  },
+  "solar3": {
+    "x": 277,
+    "y": 0,
+    "width": 100,
+    "height": 100,
+    "anchorY": 100,
+    "mask": true
+  },
+  "nuclear1": {
+    "x": 0,
+    "y": 106,
+    "width": 128,
+    "height": 100,
+    "anchorY": 100,
+    "mask": true
+  },
+  "nuclear2": {
+    "x": 148,
+    "y": 106,
+    "width": 128,
+    "height": 100,
+    "anchorY": 100,
+    "mask": true
+  },
+  "nuclear3": {
+    "x": 279,
+    "y": 110,
+    "width": 128,
+    "height": 100,
+    "anchorY": 100,
+    "mask": true
+  },
+  "wind1": {
+    "x": 0,
+    "y": 194,
+    "width": 110,
+    "height": 137,
+    "anchorY": 137,
+    "mask": true
+  },
+  "wind2": {
+    "x": 150,
+    "y": 194,
+    "width": 110,
+    "height": 137,
+    "anchorY": 137,
+    "mask": true
+  },
+  "wind3": {
+    "x": 280,
+    "y": 194,
+    "width": 110,
+    "height": 137,
+    "anchorY": 137,
+    "mask": true
+  },
+  "storage1": {
+    "x": 0,
+    "y": 440,
+    "width": 105,
+    "height": 81,
+    "anchorY": 81,
+    "mask": true
+  },
+  "storage2": {
+    "x": 158,
+    "y": 440,
+    "width": 105,
+    "height": 81,
+    "anchorY": 81,
+    "mask": true
+  },
+  "storage3": {
+    "x": 290,
+    "y": 440,
+    "width": 105,
+    "height": 81,
+    "anchorY": 81,
+    "mask": true
+  },
+  "load1": {
+    "x": 26,
+    "y": 527,
+    "width": 72,
+    "height": 91,
+    "anchorY": 91,
+    "mask": true
+  },
+  "load2": {
+    "x": 174,
+    "y": 527,
+    "width": 72,
+    "height": 91,
+    "anchorY": 91,
+    "mask": true
+  },
+  "load3": {
+    "x": 305,
+    "y": 527,
+    "width": 72,
+    "height": 91,
+    "anchorY": 91,
+    "mask": true
+  },
+  "question1": {
+    "x": 8,
+    "y": 627,
+    "width": 91,
+    "height": 90,
+    "anchorY": 90,
+    "mask": true
+  },
+  "question2": {
+    "x": 289,
+    "y": 627,
+    "width": 91,
+    "height": 90,
+    "anchorY": 90,
+    "mask": true
+  }
+}
