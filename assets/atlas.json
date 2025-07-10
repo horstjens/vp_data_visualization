@@ -1,4 +1,29 @@
 {
+  "gas1": {
+    "x": 3,
+    "y": 336,
+    "width": 97,
+    "height": 93,
+    "anchorY": 93,
+    "mask": true
+  },
+  "gas2": {
+    "x": 151,
+    "y": 336,
+    "width": 97,
+    "height": 93,
+    "anchorY": 93,
+    "mask": true
+  },
+  "gas3": {
+    "x": 282,
+    "y": 336,
+    "width": 97,
+    "height": 93,
+    "anchorY": 93,
+    "mask": true
+  },
+
   "solar1": {
     "x": 0,
     "y": 0,
@@ -134,5 +159,5 @@
     "height": 90,
     "anchorY": 90,
     "mask": true
-  }
+  },
 }
